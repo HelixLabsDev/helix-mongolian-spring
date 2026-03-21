@@ -1,0 +1,25 @@
+# Rust
+/target/
+**/*.rs.bk
+# Cargo.lock is committed — reproducible builds for smart contracts
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Stellar
+.soroban/
+*.wasm.d
+
+# Reference repos (cloned locally, not committed)
+/reference/
+
+# Environment
+.env
+.env.local

@@ -1,0 +1,9 @@
+[build]
+# Default target for `cargo build` — override if wasm32v1-none is available
+# target = "wasm32v1-none"
+
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+multivalue"]
+
+[target.wasm32v1-none]
+rustflags = ["-C", "target-feature=+multivalue"]
