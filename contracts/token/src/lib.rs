@@ -62,8 +62,12 @@ impl HelixToken {
         admin.require_auth();
 
         env.storage().instance().set(&DataKey::Admin, &admin);
-        env.storage().instance().set(&DataKey::VaultContract, &vault);
-        env.storage().instance().set(&DataKey::BridgeHandler, &bridge);
+        env.storage()
+            .instance()
+            .set(&DataKey::VaultContract, &vault);
+        env.storage()
+            .instance()
+            .set(&DataKey::BridgeHandler, &bridge);
         env.storage().instance().set(&DataKey::Name, &name);
         env.storage().instance().set(&DataKey::Symbol, &symbol);
         env.storage().instance().set(&DataKey::Decimals, &decimals);

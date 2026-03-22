@@ -105,14 +105,20 @@ impl HelixVault {
         env.storage()
             .instance()
             .set(&DataKey::SupportedAssets, &Vec::<Address>::new(&env));
-        env.storage().instance().set(&DataKey::OracleAddress, &oracle);
+        env.storage()
+            .instance()
+            .set(&DataKey::OracleAddress, &oracle);
         env.storage()
             .instance()
             .set(&DataKey::BorrowToken, &borrow_token);
         env.storage().instance().set(&DataKey::Paused, &false);
         env.storage().instance().set(&DataKey::Locked, &false);
-        env.storage().instance().set(&DataKey::TotalDeposits, &0_i128);
-        env.storage().instance().set(&DataKey::TotalBorrows, &0_i128);
+        env.storage()
+            .instance()
+            .set(&DataKey::TotalDeposits, &0_i128);
+        env.storage()
+            .instance()
+            .set(&DataKey::TotalBorrows, &0_i128);
         Self::write_role(&env, &admin, ADMIN_ROLE, true);
         Self::extend_instance(&env);
     }
@@ -149,8 +155,7 @@ impl HelixVault {
                 amount,
             );
 
-            position.deposited_shares =
-                Self::checked_add(&env, position.deposited_shares, amount);
+            position.deposited_shares = Self::checked_add(&env, position.deposited_shares, amount);
             Self::enforce_min_position(&env, position.deposited_shares);
 
             let total_deposits = Self::read_total_deposits(&env);
@@ -261,10 +266,8 @@ impl HelixVault {
 
             Self::write_total_borrows(&env, updated_total_borrows);
             Self::write_position(&env, &user, &position);
-            env.events().publish(
-                (Symbol::new(&env, "borrow"), user),
-                (amount, health_factor),
-            );
+            env.events()
+                .publish((Symbol::new(&env, "borrow"), user), (amount, health_factor));
         });
     }
 
@@ -303,7 +306,8 @@ impl HelixVault {
                 );
             }
 
-            position.borrowed_amount = Self::checked_sub(&env, position.borrowed_amount, actual_repay);
+            position.borrowed_amount =
+                Self::checked_sub(&env, position.borrowed_amount, actual_repay);
 
             let total_borrows = Self::read_total_borrows(&env);
             let updated_total_borrows = Self::checked_sub(&env, total_borrows, actual_repay);
@@ -334,7 +338,8 @@ impl HelixVault {
             let mut position = Self::read_position_required(&env, &user);
             position = Self::accrue_position(&env, position);
 
-            let health_factor = Self::health_factor_for_position(&env, &collateral_token, &position);
+            let health_factor =
+                Self::health_factor_for_position(&env, &collateral_token, &position);
             if health_factor > BPS_DENOMINATOR {
                 panic_with_error!(&env, VaultError::HealthFactorTooLow);
             }
@@ -396,8 +401,7 @@ impl HelixVault {
 
             let total_deposits = Self::read_total_deposits(&env);
             let total_borrows = Self::read_total_borrows(&env);
-            let updated_total_deposits =
-                Self::checked_sub(&env, total_deposits, shares_to_seize);
+            let updated_total_deposits = Self::checked_sub(&env, total_deposits, shares_to_seize);
             let updated_total_borrows = Self::checked_sub(&env, total_borrows, actual_repay);
 
             Self::write_total_deposits(&env, updated_total_deposits);
@@ -428,7 +432,8 @@ impl HelixVault {
         let caller = Self::require_pauser_auth(&env);
         Self::set_paused(&env, true);
         Self::extend_instance(&env);
-        env.events().publish((Symbol::new(&env, "pause"), caller), ());
+        env.events()
+            .publish((Symbol::new(&env, "pause"), caller), ());
     }
 
     pub fn unpause(env: Env) {
@@ -436,14 +441,17 @@ impl HelixVault {
         let caller = Self::require_pauser_auth(&env);
         Self::set_paused(&env, false);
         Self::extend_instance(&env);
-        env.events().publish((Symbol::new(&env, "unpause"), caller), ());
+        env.events()
+            .publish((Symbol::new(&env, "unpause"), caller), ());
     }
 
     pub fn update_config(env: Env, new_config: PoolConfig) {
         Self::require_initialized(&env);
         Self::require_admin_auth(&env);
         Self::validate_config(&env, &new_config);
-        env.storage().instance().set(&DataKey::PoolConfig, &new_config);
+        env.storage()
+            .instance()
+            .set(&DataKey::PoolConfig, &new_config);
         Self::extend_instance(&env);
         env.events()
             .publish((Symbol::new(&env, "config_update"),), new_config);
@@ -455,7 +463,9 @@ impl HelixVault {
         let mut assets = Self::supported_assets(&env);
         if !Self::contains_address(&assets, &asset) {
             assets.push_back(asset);
-            env.storage().instance().set(&DataKey::SupportedAssets, &assets);
+            env.storage()
+                .instance()
+                .set(&DataKey::SupportedAssets, &assets);
         }
         Self::extend_instance(&env);
     }
@@ -703,12 +713,19 @@ impl HelixVault {
 
     fn preview_accrued_position(env: &Env, position: &Position) -> Position {
         let mut updated = position.clone();
-        let elapsed_seconds = env.ledger().timestamp().saturating_sub(position.last_update);
+        let elapsed_seconds = env
+            .ledger()
+            .timestamp()
+            .saturating_sub(position.last_update);
         if updated.borrowed_amount > 0 && elapsed_seconds > 0 {
             let config = Self::pool_config(env);
             let accrued = Self::checked_mul_div_floor(
                 env,
-                Self::checked_mul(env, updated.borrowed_amount, i128::from(config.interest_rate)),
+                Self::checked_mul(
+                    env,
+                    updated.borrowed_amount,
+                    i128::from(config.interest_rate),
+                ),
                 i128::from(elapsed_seconds),
                 Self::checked_mul(env, SECONDS_PER_YEAR, BPS_DENOMINATOR),
             );

@@ -122,8 +122,12 @@ struct MockVault;
 impl MockVault {
     pub fn initialize(env: Env, admin: Address) {
         env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_BUMP);
-        env.storage().instance().set(&MockVaultDataKey::Admin, &admin);
-        env.storage().instance().set(&MockVaultDataKey::Paused, &false);
+        env.storage()
+            .instance()
+            .set(&MockVaultDataKey::Admin, &admin);
+        env.storage()
+            .instance()
+            .set(&MockVaultDataKey::Paused, &false);
     }
 
     pub fn pause(env: Env) {
@@ -134,7 +138,9 @@ impl MockVault {
             .get::<_, Address>(&MockVaultDataKey::Admin)
             .expect("vault admin must exist");
         admin.require_auth();
-        env.storage().instance().set(&MockVaultDataKey::Paused, &true);
+        env.storage()
+            .instance()
+            .set(&MockVaultDataKey::Paused, &true);
     }
 
     pub fn unpause(env: Env) {
@@ -145,7 +151,9 @@ impl MockVault {
             .get::<_, Address>(&MockVaultDataKey::Admin)
             .expect("vault admin must exist");
         admin.require_auth();
-        env.storage().instance().set(&MockVaultDataKey::Paused, &false);
+        env.storage()
+            .instance()
+            .set(&MockVaultDataKey::Paused, &false);
     }
 
     pub fn paused(env: Env) -> bool {
@@ -236,12 +244,7 @@ impl<'a> OracleAdaptorTestFixture<'a> {
         self.with_all_auths(|| self.secondary.set_available(&available));
     }
 
-    fn configure(
-        &self,
-        twap_window: u64,
-        staleness: u64,
-        deviation: u32,
-    ) {
+    fn configure(&self, twap_window: u64, staleness: u64, deviation: u32) {
         self.with_all_auths(|| {
             self.client.configure(
                 &self.primary.address,
@@ -428,7 +431,9 @@ fn test_staleness_rejection() {
 
     fixture.advance(1, DEFAULT_STALENESS_THRESHOLD + 1);
 
-    let result = catch_unwind(AssertUnwindSafe(|| fixture.client.lastprice(&fixture.asset)));
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        fixture.client.lastprice(&fixture.asset)
+    }));
     assert!(result.is_err());
 }
 
@@ -505,7 +510,10 @@ fn test_unauthorized_configure_rejected() {
 #[test]
 fn test_ttl_extension_on_state_changing_calls() {
     let fixture = OracleAdaptorTestFixture::new();
-    assert_eq!(instance_ttl(&fixture.env, &fixture.client.address), TTL_BUMP);
+    assert_eq!(
+        instance_ttl(&fixture.env, &fixture.client.address),
+        TTL_BUMP
+    );
 
     fixture.advance(TTL_BUMP - TTL_THRESHOLD + 1, 0);
     assert!(instance_ttl(&fixture.env, &fixture.client.address) < TTL_THRESHOLD);
@@ -515,7 +523,10 @@ fn test_ttl_extension_on_state_changing_calls() {
         DEFAULT_STALENESS_THRESHOLD,
         DEFAULT_DEVIATION_THRESHOLD,
     );
-    assert_eq!(instance_ttl(&fixture.env, &fixture.client.address), TTL_BUMP);
+    assert_eq!(
+        instance_ttl(&fixture.env, &fixture.client.address),
+        TTL_BUMP
+    );
 
     fixture.set_primary_price(100_000_000);
     fixture.set_secondary_available(false);
@@ -536,11 +547,17 @@ fn test_ttl_extension_on_state_changing_calls() {
 
     fixture.advance(TTL_BUMP - TTL_THRESHOLD + 1, 0);
     fixture.set_safe_mode(true);
-    assert_eq!(instance_ttl(&fixture.env, &fixture.client.address), TTL_BUMP);
+    assert_eq!(
+        instance_ttl(&fixture.env, &fixture.client.address),
+        TTL_BUMP
+    );
     assert!(fixture.vault.paused());
 
     fixture.advance(TTL_BUMP - TTL_THRESHOLD + 1, 0);
     fixture.set_safe_mode(false);
-    assert_eq!(instance_ttl(&fixture.env, &fixture.client.address), TTL_BUMP);
+    assert_eq!(
+        instance_ttl(&fixture.env, &fixture.client.address),
+        TTL_BUMP
+    );
     assert!(!fixture.vault.paused());
 }

@@ -5,10 +5,7 @@ extern crate std;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use soroban_sdk::{
-    testutils::{
-        storage::Instance as _,
-        Address as _, Events as _, MockAuth, MockAuthInvoke,
-    },
+    testutils::{storage::Instance as _, Address as _, Events as _, MockAuth, MockAuthInvoke},
     vec, Address, Env, IntoVal, String, Symbol, Val,
 };
 
@@ -159,7 +156,11 @@ fn test_initialize() {
     assert!(
         fixture
             .env
-            .as_contract(&fixture.client.address, || fixture.env.storage().instance().all())
+            .as_contract(&fixture.client.address, || fixture
+                .env
+                .storage()
+                .instance()
+                .all())
             .len()
             >= 8
     );
@@ -203,7 +204,10 @@ fn test_vault_mint() {
 
     assert_eq!(fixture.client.balance(&fixture.user1), 100);
     assert_eq!(fixture.client.total_supply(), 100);
-    assert_eq!(balance_value(&fixture.env, &fixture.client.address, &fixture.user1), 100);
+    assert_eq!(
+        balance_value(&fixture.env, &fixture.client.address, &fixture.user1),
+        100
+    );
 }
 
 #[test]

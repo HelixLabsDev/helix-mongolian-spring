@@ -82,14 +82,12 @@ impl HelixOracleAdaptor {
         env.storage()
             .instance()
             .set(&DataKey::TWAPWindow, &DEFAULT_TWAP_WINDOW);
-        env.storage().instance().set(
-            &DataKey::StalenessThreshold,
-            &DEFAULT_STALENESS_THRESHOLD,
-        );
-        env.storage().instance().set(
-            &DataKey::DeviationThreshold,
-            &DEFAULT_DEVIATION_THRESHOLD,
-        );
+        env.storage()
+            .instance()
+            .set(&DataKey::StalenessThreshold, &DEFAULT_STALENESS_THRESHOLD);
+        env.storage()
+            .instance()
+            .set(&DataKey::DeviationThreshold, &DEFAULT_DEVIATION_THRESHOLD);
         Self::extend_instance(&env);
     }
 
@@ -170,8 +168,7 @@ impl HelixOracleAdaptor {
                 window_start: now,
             };
         } else {
-            state.cumulative_price =
-                Self::checked_add(&env, state.cumulative_price, price.price);
+            state.cumulative_price = Self::checked_add(&env, state.cumulative_price, price.price);
             state.num_samples = state.num_samples.saturating_add(1);
         }
 
@@ -179,7 +176,12 @@ impl HelixOracleAdaptor {
         Self::write_twap_state(&env, &asset, &state);
         env.events().publish(
             (Symbol::new(&env, "price_update"), asset),
-            (price.price, price.timestamp, price.source, state.num_samples),
+            (
+                price.price,
+                price.timestamp,
+                price.source,
+                state.num_samples,
+            ),
         );
     }
 
@@ -211,7 +213,9 @@ impl HelixOracleAdaptor {
         Self::require_initialized(&env);
         Self::require_admin_auth(&env);
 
-        env.storage().instance().set(&DataKey::PrimaryOracle, &primary);
+        env.storage()
+            .instance()
+            .set(&DataKey::PrimaryOracle, &primary);
         env.storage()
             .instance()
             .set(&DataKey::SecondaryOracle, &secondary);
@@ -355,10 +359,7 @@ impl HelixOracleAdaptor {
             None => panic_with_error!(env, OracleError::FeedUnavailable),
         };
 
-        if env
-            .ledger()
-            .timestamp()
-            .saturating_sub(cached.timestamp)
+        if env.ledger().timestamp().saturating_sub(cached.timestamp)
             > Self::staleness_threshold(env)
         {
             panic_with_error!(env, OracleError::StalePrice);
@@ -397,12 +398,7 @@ impl HelixOracleAdaptor {
             return None;
         }
 
-        if env
-            .ledger()
-            .timestamp()
-            .saturating_sub(timestamp)
-            > Self::staleness_threshold(env)
-        {
+        if env.ledger().timestamp().saturating_sub(timestamp) > Self::staleness_threshold(env) {
             return None;
         }
 

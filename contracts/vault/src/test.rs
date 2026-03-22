@@ -89,12 +89,7 @@ impl<'a> VaultTestFixture<'a> {
         let borrow_admin = StellarAssetClient::new(&env, &borrow_token_address);
 
         env.mock_all_auths();
-        vault.initialize(
-            &admin,
-            &oracle_id,
-            &borrow_token_address,
-            &default_config(),
-        );
+        vault.initialize(&admin, &oracle_id, &borrow_token_address, &default_config());
         token.initialize(
             &admin,
             &vault_id,
@@ -245,7 +240,11 @@ fn test_initialize() {
         fixture.admin
     );
     assert_eq!(
-        instance_value::<Address>(&fixture.env, &fixture.vault.address, &DataKey::OracleAddress),
+        instance_value::<Address>(
+            &fixture.env,
+            &fixture.vault.address,
+            &DataKey::OracleAddress
+        ),
         fixture.oracle.address
     );
     assert_eq!(
@@ -275,7 +274,11 @@ fn test_initialize() {
         &DataKey::Locked
     ));
     assert_eq!(
-        instance_value::<i128>(&fixture.env, &fixture.vault.address, &DataKey::TotalDeposits),
+        instance_value::<i128>(
+            &fixture.env,
+            &fixture.vault.address,
+            &DataKey::TotalDeposits
+        ),
         0
     );
     assert_eq!(
@@ -313,7 +316,11 @@ fn test_deposit() {
         }
     );
     assert_eq!(
-        instance_value::<i128>(&fixture.env, &fixture.vault.address, &DataKey::TotalDeposits),
+        instance_value::<i128>(
+            &fixture.env,
+            &fixture.vault.address,
+            &DataKey::TotalDeposits
+        ),
         40 * ONE
     );
     assert_eq!(fixture.token.balance(&fixture.vault.address), 40 * ONE);
@@ -373,7 +380,11 @@ fn test_withdraw() {
     assert_eq!(position.deposited_shares, 25 * ONE);
     assert_eq!(position.borrowed_amount, 0);
     assert_eq!(
-        instance_value::<i128>(&fixture.env, &fixture.vault.address, &DataKey::TotalDeposits),
+        instance_value::<i128>(
+            &fixture.env,
+            &fixture.vault.address,
+            &DataKey::TotalDeposits
+        ),
         25 * ONE
     );
     assert_eq!(fixture.token.balance(&fixture.user), 75 * ONE);
@@ -384,13 +395,9 @@ fn test_withdraw() {
             &fixture.env,
             (
                 fixture.vault.address.clone(),
-                (Symbol::new(&fixture.env, "withdraw"), fixture.user.clone()).into_val(&fixture.env),
-                (
-                    fixture.token.address.clone(),
-                    15 * ONE,
-                    position
-                )
-                    .into_val(&fixture.env)
+                (Symbol::new(&fixture.env, "withdraw"), fixture.user.clone())
+                    .into_val(&fixture.env),
+                (fixture.token.address.clone(), 15 * ONE, position).into_val(&fixture.env)
             )
         ]
     );
@@ -531,7 +538,11 @@ fn test_liquidation() {
     assert_eq!(position.borrowed_amount, 70 * ONE);
     assert_eq!(fixture.token.balance(&fixture.liquidator), 735_000_000);
     assert_eq!(
-        instance_value::<i128>(&fixture.env, &fixture.vault.address, &DataKey::TotalDeposits),
+        instance_value::<i128>(
+            &fixture.env,
+            &fixture.vault.address,
+            &DataKey::TotalDeposits
+        ),
         265_000_000
     );
     assert_eq!(
@@ -622,7 +633,10 @@ fn test_pause_blocks_operations() {
     assert!(liquidate_result.is_err());
 
     fixture.repay(&fixture.user, 50 * ONE);
-    assert_eq!(fixture.vault.get_position(&fixture.user).borrowed_amount, 50 * ONE);
+    assert_eq!(
+        fixture.vault.get_position(&fixture.user).borrowed_amount,
+        50 * ONE
+    );
 }
 
 #[test]
