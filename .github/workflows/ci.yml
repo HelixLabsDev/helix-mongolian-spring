@@ -20,7 +20,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          targets: wasm32-unknown-unknown,wasm32v1-none
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -33,6 +33,9 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Build WASM (needed for contract imports in tests)
+        run: cargo build --target wasm32v1-none --release
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -53,7 +56,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          targets: wasm32-unknown-unknown,wasm32v1-none
 
       - name: Install Stellar CLI
         run: cargo install --locked stellar-cli || true
@@ -71,26 +74,32 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
 
       - name: Build WASM
-        run: cargo build --target wasm32-unknown-unknown --release
+        run: |
+          cargo build --target wasm32-unknown-unknown --release
+          cargo build --target wasm32v1-none --release
 
       - name: Optimize WASM
         run: |
-          for wasm in target/wasm32-unknown-unknown/release/*.wasm; do
-            if [ -f "$wasm" ]; then
-              stellar contract optimize --wasm "$wasm" || true
-            fi
+          for dir in target/wasm32-unknown-unknown/release target/wasm32v1-none/release; do
+            for wasm in "$dir"/*.wasm; do
+              if [ -f "$wasm" ]; then
+                stellar contract optimize --wasm "$wasm" || true
+              fi
+            done
           done
 
       - name: Check WASM sizes
         run: |
           echo "=== WASM Sizes ==="
-          for wasm in target/wasm32-unknown-unknown/release/*.wasm; do
-            if [ -f "$wasm" ]; then
-              size=$(wc -c < "$wasm")
-              name=$(basename "$wasm")
-              echo "  $name: $size bytes"
-              if [ "$size" -gt 204800 ]; then
-                echo "  WARNING: $name exceeds 200KB"
+          for dir in target/wasm32-unknown-unknown/release target/wasm32v1-none/release; do
+            for wasm in "$dir"/*.wasm; do
+              if [ -f "$wasm" ]; then
+                size=$(wc -c < "$wasm")
+                name=$(basename "$wasm")
+                echo "  $name ($dir): $size bytes"
+                if [ "$size" -gt 204800 ]; then
+                  echo "  WARNING: $name exceeds 200KB"
+                fi
               fi
-            fi
+            done
           done
