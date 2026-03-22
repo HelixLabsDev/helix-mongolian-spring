@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "contracts/bridge-poc",
     "contracts/token",
     "contracts/vault",
     "contracts/oracle-adaptor",
