@@ -34,6 +34,6 @@ impl MockBridge {
 mod test {
     #[test]
     fn test_placeholder() {
-        assert!(true);
+        // Phase 5: real integration tests
     }
 }
