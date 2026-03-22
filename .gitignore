@@ -25,3 +25,11 @@
 .env.local
 
 contracts/vault/test_snapshots/
+contracts/oracle-adaptor/test_snapshots/
+contracts/token/test_snapshots/
+
+# Agent session artifacts (handoffs are ephemeral, instructions are tracked)
+.codex/handoff.md
+
+# Stale artifacts
+Helix Stellar/

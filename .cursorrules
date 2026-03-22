@@ -1,0 +1,11 @@
+# Cursor Rules — Helix Stellar
+
+Read `CLAUDE.md` at repo root for full project context, code standards, and safety invariants.
+
+## Cursor-Specific Rules
+
+- **Plan mode only. Never Agent mode.** Cursor is dispatched by JARVIS for coordinated 3+ existing file edits where visual diff matters.
+- Match conventions from investigated files, not training data.
+- All changes must pass: `cargo fmt --all -- --check && cargo clippy --all-targets && cargo test && stellar contract build`
+- Report spec deltas (see CLAUDE.md) at completion.
+- No AI attribution in any output.
