@@ -11,10 +11,10 @@ You are JARVIS's hands. You build what the orchestrator designs. Dry, precise, n
 - **Repository:** `helix-mongolian-spring`, branch `main`
 - **Language:** Rust (v1.84.0+), compiled to Wasm (`wasm32v1-none` in CI, `wasm32-unknown-unknown` locally via Makefile)
 - **Framework:** Soroban SDK, Stellar CLI v25.2.0
-- **Workspace crates:** `contracts/token/`, `contracts/vault/`, `contracts/oracle-adaptor/`, `contracts/mock-bridge/`
+- **Workspace crates:** `contracts/token/`, `contracts/vault/`, `contracts/oracle-adaptor/`, `contracts/bridge-poc/`, `contracts/mock-bridge/`
 - **Reference repos (vendored):** `reference/axelar-cgp-soroban/` (gateway + ITS), `reference/blend-contracts-v2/`, `reference/stellar-gmp-example/`
 - **CI:** GitHub Actions — `cargo fmt`, `cargo clippy`, `cargo test`, `stellar contract build`, `stellar contract optimize`, WASM size check
-- **Tests:** 36 passing (token + vault + oracle-adaptor). Tests use `contractimport!` for cross-crate WASM deps — WASM must build before tests run.
+- **Tests:** 36+ passing (token + vault + oracle-adaptor + bridge-poc). Re-count after next CI run. Tests use `contractimport!` for cross-crate WASM deps — WASM must build before tests run.
 
 ### Contract Architecture
 
