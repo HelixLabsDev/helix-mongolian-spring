@@ -57,4 +57,4 @@ This verifies deployment presence only. Initialization-dependent flows are not a
 
 ## CI
 
-[GitHub Actions](https://github.com/vaziliaz/helix-mongolian-spring/actions)
+[GitHub Actions](https://github.com/HelixLabsDev/helix-mongolian-spring/actions)
