@@ -1,7 +1,13 @@
-.PHONY: build test clean fmt clippy optimize
+.PHONY: build test clean fmt clippy optimize sizes
+
+CONTRACT_PACKAGES = bridge-poc helix-mock-bridge helix-oracle-adaptor helix-token helix-vault
+WASM_DIR = target/wasm32v1-none/release
 
 build:
-	cargo build --target wasm32-unknown-unknown --release
+	@for pkg in $(CONTRACT_PACKAGES); do \
+		echo "Building $$pkg..."; \
+		stellar contract build --package "$$pkg" --optimize; \
+	done
 
 test:
 	cargo test --all
@@ -18,16 +24,10 @@ clean:
 	cargo clean
 
 optimize: build
-	@for wasm in target/wasm32-unknown-unknown/release/helix_*.wasm; do \
-		if [ -f "$$wasm" ]; then \
-			echo "Optimizing $$wasm..."; \
-			stellar contract optimize --wasm "$$wasm"; \
-		fi \
-	done
 
 sizes: build
 	@echo "=== WASM Sizes ==="
-	@for wasm in target/wasm32-unknown-unknown/release/helix_*.wasm; do \
+	@for wasm in $(WASM_DIR)/*.wasm; do \
 		if [ -f "$$wasm" ]; then \
 			echo "  $$(basename $$wasm): $$(wc -c < $$wasm) bytes"; \
 		fi \
@@ -38,15 +38,15 @@ ADMIN = helix-admin
 
 deploy-token: optimize
 	stellar contract deploy \
-		--wasm target/wasm32-unknown-unknown/release/helix_token.optimized.wasm \
+		--wasm $(WASM_DIR)/helix_token.wasm \
 		--source $(ADMIN) --network $(NETWORK)
 
 deploy-vault: optimize
 	stellar contract deploy \
-		--wasm target/wasm32-unknown-unknown/release/helix_vault.optimized.wasm \
+		--wasm $(WASM_DIR)/helix_vault.wasm \
 		--source $(ADMIN) --network $(NETWORK)
 
 deploy-oracle: optimize
 	stellar contract deploy \
-		--wasm target/wasm32-unknown-unknown/release/helix_oracle_adaptor.optimized.wasm \
+		--wasm $(WASM_DIR)/helix_oracle_adaptor.wasm \
 		--source $(ADMIN) --network $(NETWORK)

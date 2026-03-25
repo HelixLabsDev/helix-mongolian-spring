@@ -9,6 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  CONTRACT_PACKAGES: bridge-poc helix-mock-bridge helix-oracle-adaptor helix-token helix-vault
 
 jobs:
   check:
@@ -76,33 +77,22 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Build WASM
+      - name: Build Optimized WASM
         run: |
-          cargo build --target wasm32-unknown-unknown --release
-          cargo build --target wasm32v1-none --release
-
-      - name: Optimize WASM
-        run: |
-          for dir in target/wasm32-unknown-unknown/release target/wasm32v1-none/release; do
-            for wasm in "$dir"/*.wasm; do
-              if [ -f "$wasm" ]; then
-                stellar contract optimize --wasm "$wasm" || true
-              fi
-            done
+          for pkg in $CONTRACT_PACKAGES; do
+            stellar contract build --package "$pkg" --optimize
           done
 
       - name: Check WASM sizes
         run: |
           echo "=== WASM Sizes ==="
-          for dir in target/wasm32-unknown-unknown/release target/wasm32v1-none/release; do
-            for wasm in "$dir"/*.wasm; do
-              if [ -f "$wasm" ]; then
-                size=$(wc -c < "$wasm")
-                name=$(basename "$wasm")
-                echo "  $name ($dir): $size bytes"
-                if [ "$size" -gt 204800 ]; then
-                  echo "  WARNING: $name exceeds 200KB"
-                fi
+          for wasm in target/wasm32v1-none/release/*.wasm; do
+            if [ -f "$wasm" ]; then
+              size=$(wc -c < "$wasm")
+              name=$(basename "$wasm")
+              echo "  $name: $size bytes"
+              if [ "$size" -gt 204800 ]; then
+                echo "  WARNING: $name exceeds 200KB"
               fi
-            done
+            fi
           done
