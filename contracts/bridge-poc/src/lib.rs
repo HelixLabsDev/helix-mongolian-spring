@@ -3,8 +3,8 @@
 use core::str;
 
 use soroban_sdk::{
-    contract, contractclient, contracterror, contractimpl, contracttype, panic_with_error,
-    Address, Bytes, BytesN, Env, String, Symbol,
+    contract, contractclient, contracterror, contractimpl, contracttype, panic_with_error, Address,
+    Bytes, BytesN, Env, String, Symbol,
 };
 
 const TTL_THRESHOLD: u32 = 17_280;
@@ -92,7 +92,9 @@ pub struct BridgePoc;
 impl BridgePoc {
     pub fn __constructor(env: Env, gateway: Address, gas_service: Address) {
         env.storage().instance().set(&DataKey::Gateway, &gateway);
-        env.storage().instance().set(&DataKey::GasService, &gas_service);
+        env.storage()
+            .instance()
+            .set(&DataKey::GasService, &gas_service);
         Self::extend_instance(&env);
     }
 
@@ -232,9 +234,7 @@ impl BridgePoc {
     }
 
     fn extend_instance(env: &Env) {
-        env.storage()
-            .instance()
-            .extend_ttl(TTL_THRESHOLD, TTL_BUMP);
+        env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_BUMP);
     }
 }
 

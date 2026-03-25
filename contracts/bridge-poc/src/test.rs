@@ -2,10 +2,7 @@
 
 extern crate std;
 
-use soroban_sdk::{
-    testutils::Address as _,
-    Address, Env, String, Val,
-};
+use soroban_sdk::{testutils::Address as _, Address, Env, String, Val};
 
 use super::{BridgePoc, BridgePocClient, DataKey};
 
