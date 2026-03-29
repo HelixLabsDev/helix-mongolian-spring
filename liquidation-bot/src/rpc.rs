@@ -78,12 +78,7 @@ impl RpcClient {
                     Ok::<_, anyhow::Error>(
                         EventFilter::new(EventType::All)
                             .contract(contract_id)
-                            .topic(vec![
-                                Topic::Val(sc_symbol(event_name)?),
-                                Topic::Any,
-                                Topic::Any,
-                                Topic::Any,
-                            ]),
+                            .topic(vec![Topic::Val(sc_symbol(event_name)?)]),
                     )
                 })
                 .collect::<Result<Vec<_>>>()?;
