@@ -115,6 +115,49 @@ fn set_admin_with_auth(fixture: &TokenTestFixture<'_>, signer: &Address, new_adm
     fixture.client.mock_auths(&[auth]).set_admin(new_admin);
 }
 
+fn bridge_mint_with_auth(
+    fixture: &TokenTestFixture<'_>,
+    signer: &Address,
+    to: &Address,
+    shares: i128,
+) {
+    let invocation = MockAuthInvoke {
+        contract: &fixture.client.address,
+        fn_name: "bridge_mint",
+        args: (to.clone(), shares).into_val(&fixture.env),
+        sub_invokes: &[],
+    };
+    let auth = MockAuth {
+        address: signer,
+        invoke: &invocation,
+    };
+
+    fixture.client.mock_auths(&[auth]).bridge_mint(to, &shares);
+}
+
+fn bridge_burn_with_auth(
+    fixture: &TokenTestFixture<'_>,
+    signer: &Address,
+    from: &Address,
+    shares: i128,
+) {
+    let invocation = MockAuthInvoke {
+        contract: &fixture.client.address,
+        fn_name: "bridge_burn",
+        args: (from.clone(), shares).into_val(&fixture.env),
+        sub_invokes: &[],
+    };
+    let auth = MockAuth {
+        address: signer,
+        invoke: &invocation,
+    };
+
+    fixture
+        .client
+        .mock_auths(&[auth])
+        .bridge_burn(from, &shares);
+}
+
 #[test]
 fn test_initialize() {
     let fixture = TokenTestFixture::new();
@@ -218,12 +261,68 @@ fn test_vault_mint_unauthorized() {
 }
 
 #[test]
+fn test_bridge_mint_with_bridge_auth() {
+    let fixture = TokenTestFixture::new();
+
+    bridge_mint_with_auth(&fixture, &fixture.bridge, &fixture.user1, 125);
+
+    let event = vec![&fixture.env, fixture.env.events().all().last_unchecked()];
+    assert_eq!(
+        event,
+        vec![
+            &fixture.env,
+            (
+                fixture.client.address.clone(),
+                (Symbol::new(&fixture.env, "mint"), fixture.user1.clone()).into_val(&fixture.env),
+                (125_i128, 125_i128).into_val(&fixture.env)
+            )
+        ]
+    );
+
+    assert_eq!(fixture.client.balance(&fixture.user1), 125);
+    assert_eq!(fixture.client.total_supply(), 125);
+}
+
+#[test]
+#[should_panic]
+fn test_bridge_mint_unauthorized() {
+    let fixture = TokenTestFixture::new();
+    let attacker = Address::generate(&fixture.env);
+
+    bridge_mint_with_auth(&fixture, &attacker, &fixture.user1, 100);
+}
+
+#[test]
 fn test_vault_burn() {
     let fixture = TokenTestFixture::new();
     fixture.env.mock_all_auths();
 
     fixture.client.vault_mint(&fixture.user1, &100);
     fixture.client.vault_burn(&fixture.user1, &40);
+
+    let event = vec![&fixture.env, fixture.env.events().all().last_unchecked()];
+    assert_eq!(
+        event,
+        vec![
+            &fixture.env,
+            (
+                fixture.client.address.clone(),
+                (Symbol::new(&fixture.env, "burn"), fixture.user1.clone()).into_val(&fixture.env),
+                (40_i128, 60_i128).into_val(&fixture.env)
+            )
+        ]
+    );
+
+    assert_eq!(fixture.client.balance(&fixture.user1), 60);
+    assert_eq!(fixture.client.total_supply(), 60);
+}
+
+#[test]
+fn test_bridge_burn_with_bridge_auth() {
+    let fixture = TokenTestFixture::new();
+
+    bridge_mint_with_auth(&fixture, &fixture.bridge, &fixture.user1, 100);
+    bridge_burn_with_auth(&fixture, &fixture.bridge, &fixture.user1, 40);
 
     let event = vec![&fixture.env, fixture.env.events().all().last_unchecked()];
     assert_eq!(

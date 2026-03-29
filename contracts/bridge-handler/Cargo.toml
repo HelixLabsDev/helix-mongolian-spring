@@ -1,0 +1,17 @@
+[package]
+name = "bridge-handler"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = { workspace = true, features = ["alloc"] }
+alloy-primitives = { version = "0.8.23", default-features = false }
+alloy-sol-types = { version = "0.8.23", default-features = false }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }

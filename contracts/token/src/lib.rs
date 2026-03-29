@@ -84,18 +84,18 @@ impl HelixToken {
         vault.require_auth();
 
         Self::extend_instance(&env);
-        let balance = Self::read_balance(&env, &to);
-        let total_shares = Self::read_total_shares(&env);
-        let updated_balance = Self::checked_add(&env, balance, shares);
-        let updated_total_shares = Self::checked_add(&env, total_shares, shares);
+        Self::mint_shares(&env, &to, shares);
+    }
 
-        Self::write_balance(&env, &to, updated_balance);
-        Self::write_total_shares(&env, updated_total_shares);
+    pub fn bridge_mint(env: Env, to: Address, shares: i128) {
+        Self::require_initialized(&env);
+        Self::validate_amount(&env, shares);
 
-        env.events().publish(
-            (Symbol::new(&env, "mint"), to),
-            (shares, updated_total_shares),
-        );
+        let bridge = Self::bridge_handler(&env);
+        bridge.require_auth();
+
+        Self::extend_instance(&env);
+        Self::mint_shares(&env, &to, shares);
     }
 
     pub fn vault_burn(env: Env, from: Address, shares: i128) {
@@ -106,16 +106,18 @@ impl HelixToken {
         vault.require_auth();
 
         Self::extend_instance(&env);
-        Self::spend_balance(&env, &from, shares);
+        Self::burn_shares(&env, &from, shares);
+    }
 
-        let total_shares = Self::read_total_shares(&env);
-        let updated_total_shares = Self::checked_sub(&env, total_shares, shares);
-        Self::write_total_shares(&env, updated_total_shares);
+    pub fn bridge_burn(env: Env, from: Address, shares: i128) {
+        Self::require_initialized(&env);
+        Self::validate_amount(&env, shares);
 
-        env.events().publish(
-            (Symbol::new(&env, "burn"), from),
-            (shares, updated_total_shares),
-        );
+        let bridge = Self::bridge_handler(&env);
+        bridge.require_auth();
+
+        Self::extend_instance(&env);
+        Self::burn_shares(&env, &from, shares);
     }
 
     pub fn update_exchange_rate(env: Env, new_total_assets: i128) {
@@ -357,6 +359,34 @@ impl HelixToken {
 
     fn read_total_assets(env: &Env) -> i128 {
         Self::get_instance(env, &DataKey::TotalAssets)
+    }
+
+    fn mint_shares(env: &Env, to: &Address, shares: i128) {
+        let balance = Self::read_balance(env, to);
+        let total_shares = Self::read_total_shares(env);
+        let updated_balance = Self::checked_add(env, balance, shares);
+        let updated_total_shares = Self::checked_add(env, total_shares, shares);
+
+        Self::write_balance(env, to, updated_balance);
+        Self::write_total_shares(env, updated_total_shares);
+
+        env.events().publish(
+            (Symbol::new(env, "mint"), to.clone()),
+            (shares, updated_total_shares),
+        );
+    }
+
+    fn burn_shares(env: &Env, from: &Address, shares: i128) {
+        Self::spend_balance(env, from, shares);
+
+        let total_shares = Self::read_total_shares(env);
+        let updated_total_shares = Self::checked_sub(env, total_shares, shares);
+        Self::write_total_shares(env, updated_total_shares);
+
+        env.events().publish(
+            (Symbol::new(env, "burn"), from.clone()),
+            (shares, updated_total_shares),
+        );
     }
 
     fn balance_key(address: &Address) -> DataKey {
