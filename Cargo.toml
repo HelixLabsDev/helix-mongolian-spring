@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "contracts/bridge-poc",
     "contracts/bridge-handler",
+    "contracts/mock-oracle",
     "contracts/token",
     "contracts/vault",
     "contracts/oracle-adaptor",
