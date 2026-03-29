@@ -1,0 +1,26 @@
+# Soroban RPC endpoint for the target network.
+rpc_url = "https://soroban-testnet.stellar.org"
+
+# Network passphrase used when building and signing transactions.
+network_passphrase = "Test SDF Network ; September 2015"
+
+# Replace with the deployed Helix vault contract ID.
+vault_contract_id = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+
+# Replace with the deployed Helix oracle adaptor contract ID.
+oracle_contract_id = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
+
+# Replace with the deployed borrow-token contract ID used to fund liquidations.
+token_contract_id = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
+
+# Poll interval between scan/evaluate/execute loops.
+poll_interval_secs = 15
+
+# Minimum expected liquidation profit, denominated in borrow-token units.
+min_profit_threshold = 1000000
+
+# Maximum number of liquidations to submit in one loop iteration.
+max_liquidations_per_run = 3
+
+# Initial transaction fee budget in stroops before Soroban preparation adjusts it.
+gas_budget = 200000

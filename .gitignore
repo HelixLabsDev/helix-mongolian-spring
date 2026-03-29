@@ -1,5 +1,6 @@
 # Rust
 /target/
+liquidation-bot/target/
 **/*.rs.bk
 # Cargo.lock is committed — reproducible builds for smart contracts
 
