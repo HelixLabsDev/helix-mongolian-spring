@@ -28,6 +28,7 @@ liquidation-bot/target/
 contracts/vault/test_snapshots/
 contracts/oracle-adaptor/test_snapshots/
 contracts/token/test_snapshots/
+contracts/bridge-handler/test_snapshots/
 
 # Agent session artifacts (handoffs are ephemeral, instructions are tracked)
 .codex/handoff.md
