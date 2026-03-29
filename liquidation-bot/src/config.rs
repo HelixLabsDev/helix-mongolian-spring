@@ -10,6 +10,7 @@ struct RawConfig {
     vault_contract_id: String,
     oracle_contract_id: String,
     token_contract_id: String,
+    start_ledger: Option<u64>,
     poll_interval_secs: u64,
     min_profit_threshold: i64,
     max_liquidations_per_run: usize,
@@ -23,6 +24,7 @@ pub struct Config {
     pub vault_contract_id: String,
     pub oracle_contract_id: String,
     pub token_contract_id: String,
+    pub start_ledger: Option<u64>,
     pub liquidator_secret_key: String,
     pub poll_interval_secs: u64,
     pub min_profit_threshold: i128,
@@ -45,6 +47,7 @@ impl Config {
             vault_contract_id: parsed.vault_contract_id,
             oracle_contract_id: parsed.oracle_contract_id,
             token_contract_id: parsed.token_contract_id,
+            start_ledger: parsed.start_ledger,
             liquidator_secret_key,
             poll_interval_secs: parsed.poll_interval_secs,
             min_profit_threshold: i128::from(parsed.min_profit_threshold),
@@ -80,6 +83,7 @@ mod tests {
             "Test SDF Network ; September 2015"
         );
         assert_eq!(config.liquidator_secret_key, TEST_SECRET);
+        assert_eq!(config.start_ledger, None);
         assert!(config.poll_interval_secs > 0);
         assert!(config.max_liquidations_per_run > 0);
 

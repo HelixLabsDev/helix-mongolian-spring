@@ -20,7 +20,7 @@ MOCK_ORACLE_WASM="$ROOT_DIR/target/wasm32v1-none/release/helix_mock_oracle.wasm"
 TOKEN_WASM="$ROOT_DIR/target/wasm32v1-none/release/helix_token.wasm"
 VAULT_WASM="$ROOT_DIR/target/wasm32v1-none/release/helix_vault.wasm"
 
-POOL_CONFIG_JSON='{"max_ltv":7500,"liq_threshold":8000,"liq_bonus":500,"interest_rate":500,"min_position":1000000}'
+POOL_CONFIG_JSON='{"max_ltv":7500,"liq_threshold":8000,"liq_bonus":500,"interest_rate":500,"min_position":"1000000"}'
 INITIAL_PRICE=2500000000
 LIQUIDATION_PRICE=1500000000
 COLLATERAL_SHARES=10000000
@@ -93,7 +93,6 @@ ORACLE_ID="$(
     --source "$ALICE" \
     --network "$NETWORK" \
     -- \
-    __constructor \
     --admin "$ALICE_ADDRESS"
 )"
 printf 'oracle_id: %s\n' "$ORACLE_ID"
@@ -210,6 +209,16 @@ stellar contract invoke \
   --shares "$COLLATERAL_SHARES" \
   >/dev/null
 
+step "Setting exchange rate for collateral token"
+stellar contract invoke \
+  --id "$TOKEN_ID" \
+  --source "$ALICE" \
+  --network "$NETWORK" \
+  -- \
+  update_exchange_rate \
+  --new_total_assets "$COLLATERAL_SHARES" \
+  >/dev/null
+
 APPROVAL_LEDGER="$(( $(latest_ledger_sequence) + 1000 ))"
 stellar contract invoke \
   --id "$TOKEN_ID" \
@@ -271,12 +280,14 @@ stellar contract invoke \
   >/dev/null
 
 step "Writing liquidation bot config"
+DEPLOY_LEDGER="$(latest_ledger_sequence)"
 cat >"$BOT_CONFIG_PATH" <<EOF
 rpc_url = "$RPC_URL"
 network_passphrase = "$NETWORK_PASSPHRASE"
 vault_contract_id = "$VAULT_ID"
 oracle_contract_id = "$ORACLE_ID"
 token_contract_id = "$BORROW_TOKEN_ID"
+start_ledger = $DEPLOY_LEDGER
 poll_interval_secs = $POLL_INTERVAL_SECS
 min_profit_threshold = $MIN_PROFIT_THRESHOLD
 max_liquidations_per_run = $MAX_LIQUIDATIONS_PER_RUN

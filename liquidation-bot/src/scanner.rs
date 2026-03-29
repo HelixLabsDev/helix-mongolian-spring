@@ -46,7 +46,11 @@ pub async fn scan(config: &Config, rpc: &RpcClient, state: &mut ScannerState) ->
     let from_ledger = state
         .last_seen_ledger
         .map(|ledger| ledger.saturating_add(1))
-        .unwrap_or_else(|| latest_ledger.saturating_sub(INITIAL_LEDGER_LOOKBACK));
+        .unwrap_or_else(|| {
+            config
+                .start_ledger
+                .unwrap_or_else(|| latest_ledger.saturating_sub(INITIAL_LEDGER_LOOKBACK))
+        });
 
     debug!(from_ledger, latest_ledger, "scanning vault events");
     let response = rpc

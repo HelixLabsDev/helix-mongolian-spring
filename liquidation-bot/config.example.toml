@@ -13,6 +13,9 @@ oracle_contract_id = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
 # Replace with the deployed borrow-token contract ID used to fund liquidations.
 token_contract_id = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
 
+# Optional: ledger to start scanning from (default: latest - 1000).
+# start_ledger = 12345
+
 # Poll interval between scan/evaluate/execute loops.
 poll_interval_secs = 15
 
