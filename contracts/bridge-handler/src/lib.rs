@@ -61,6 +61,7 @@ pub enum DataKey {
     MaxBurnPerEpoch,
     EpochDuration,
     ProcessedMessage(BytesN<32>),
+    RecipientMapping(BytesN<32>),
     EpochMints(u64),
     EpochBurns(u64),
 }
@@ -230,6 +231,22 @@ impl BridgeHandler {
         }
     }
 
+    pub fn register_recipient(env: Env, user: Address, evm_address: BytesN<32>) {
+        Self::require_initialized(&env);
+        user.require_auth();
+        Self::extend_instance(&env);
+        Self::write_recipient_mapping(&env, &evm_address, &user);
+        env.events().publish(
+            (Symbol::new(&env, "recipient_registered"), user),
+            (evm_address,),
+        );
+    }
+
+    pub fn get_recipient(env: Env, evm_address: BytesN<32>) -> Option<Address> {
+        Self::require_initialized(&env);
+        Self::read_recipient_mapping(&env, &evm_address)
+    }
+
     pub fn initiate_withdrawal(
         env: Env,
         user: Address,
@@ -364,7 +381,16 @@ impl BridgeHandler {
             return Err(BridgeHandlerError::RateLimitExceeded);
         }
 
-        let recipient = Self::bytes32_to_address(env, decoded.stellarRecipient.into())?;
+        let recipient_bytes = decoded.stellarRecipient.0;
+        let evm_key = DataKey::RecipientMapping(BytesN::from_array(env, &recipient_bytes));
+        let recipient = if env.storage().persistent().has(&evm_key) {
+            env.storage()
+                .persistent()
+                .get::<_, Address>(&evm_key)
+                .unwrap()
+        } else {
+            Self::bytes32_to_address(env, recipient_bytes)?
+        };
         let token_address = Self::token_contract(env);
         Self::authorize_current_contract_call(
             env,
@@ -661,6 +687,20 @@ impl BridgeHandler {
     fn write_processed_message(env: &Env, payload_hash: &BytesN<32>) {
         let key = DataKey::ProcessedMessage(payload_hash.clone());
         env.storage().persistent().set(&key, &true);
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, TTL_THRESHOLD, TTL_BUMP);
+    }
+
+    fn read_recipient_mapping(env: &Env, evm_address: &BytesN<32>) -> Option<Address> {
+        env.storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::RecipientMapping(evm_address.clone()))
+    }
+
+    fn write_recipient_mapping(env: &Env, evm_address: &BytesN<32>, user: &Address) {
+        let key = DataKey::RecipientMapping(evm_address.clone());
+        env.storage().persistent().set(&key, user);
         env.storage()
             .persistent()
             .extend_ttl(&key, TTL_THRESHOLD, TTL_BUMP);

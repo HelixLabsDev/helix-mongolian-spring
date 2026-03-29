@@ -306,11 +306,20 @@ impl<'a> BridgeHandlerTestFixture<'a> {
 
     fn deposit_payload(&self, recipient: &Address, shares: i128, nonce: u64) -> Bytes {
         let recipient_bytes = contract_bytes32(&self.env, recipient);
+        self.deposit_payload_for_bytes32(&recipient_bytes, shares, nonce)
+    }
+
+    fn deposit_payload_for_bytes32(
+        &self,
+        recipient: &BytesN<32>,
+        shares: i128,
+        nonce: u64,
+    ) -> Bytes {
         Bytes::from_slice(
             &self.env,
             &DepositMessage {
                 messageType: MESSAGE_TYPE_DEPOSIT,
-                stellarRecipient: FixedBytes::<32>::new(recipient_bytes.to_array()),
+                stellarRecipient: FixedBytes::<32>::new(recipient.to_array()),
                 shares: U256::from(shares as u128),
                 nonce: U256::from(nonce),
             }
@@ -432,7 +441,7 @@ fn test_constructor_stores_config() {
 }
 
 #[test]
-fn test_deposit_mints_tokens() {
+fn test_deposit_without_mapping_uses_direct_decode() {
     let fixture = BridgeHandlerTestFixture::new();
     let payload = fixture.deposit_payload(&fixture.user, 150, 1);
 
@@ -444,6 +453,42 @@ fn test_deposit_mints_tokens() {
     );
     assert_eq!(fixture.token.balance(&fixture.user), 150);
     assert_eq!(fixture.token.total_supply(), 150);
+}
+
+#[test]
+fn test_register_and_resolve_recipient() {
+    let fixture = BridgeHandlerTestFixture::new();
+    let evm_address = fixture.eth_recipient();
+
+    fixture
+        .client
+        .register_recipient(&fixture.user, &evm_address);
+    assert_eq!(
+        fixture.client.get_recipient(&evm_address),
+        Some(fixture.user.clone())
+    );
+
+    let payload = fixture.deposit_payload_for_bytes32(&evm_address, 175, 2);
+    fixture.client.execute(
+        &fixture.source_chain,
+        &String::from_str(&fixture.env, "deposit-mapped"),
+        &fixture.source_address,
+        &payload,
+    );
+
+    assert_eq!(fixture.token.balance(&fixture.user), 175);
+    assert_eq!(fixture.token.total_supply(), 175);
+}
+
+#[test]
+#[should_panic]
+fn test_register_recipient_requires_auth() {
+    let fixture = BridgeHandlerTestFixture::new();
+    fixture.env.set_auths(&[]);
+
+    fixture
+        .client
+        .register_recipient(&fixture.user, &fixture.eth_recipient());
 }
 
 #[test]
