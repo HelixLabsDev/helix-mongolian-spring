@@ -30,6 +30,7 @@ contracts/oracle-adaptor/test_snapshots/
 contracts/token/test_snapshots/
 contracts/bridge-handler/test_snapshots/
 contracts/mock-oracle/test_snapshots/
+liquidation-bot/config.testnet.toml
 
 # Agent session artifacts (handoffs are ephemeral, instructions are tracked)
 .codex/handoff.md
