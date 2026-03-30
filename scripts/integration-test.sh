@@ -281,6 +281,20 @@ stellar contract invoke \
   --timestamp "$NOW" \
   >/dev/null
 
+step "Approving vault to spend Charlie borrow tokens for liquidation"
+CHARLIE_APPROVAL_LEDGER="$(( $(latest_ledger_sequence) + 1000 ))"
+stellar contract invoke \
+  --id "$BORROW_TOKEN_ID" \
+  --source "$CHARLIE" \
+  --network "$NETWORK" \
+  -- \
+  approve \
+  --from "$CHARLIE_ADDRESS" \
+  --spender "$VAULT_ID" \
+  --amount "$BORROW_AMOUNT" \
+  --expiration_ledger "$CHARLIE_APPROVAL_LEDGER" \
+  >/dev/null
+
 step "Writing liquidation bot config"
 cat >"$BOT_CONFIG_PATH" <<EOF
 rpc_url = "$RPC_URL"
