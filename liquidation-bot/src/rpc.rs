@@ -76,9 +76,9 @@ impl RpcClient {
                 .iter()
                 .map(|event_name| {
                     Ok::<_, anyhow::Error>(
-                        EventFilter::new(EventType::All)
+                        EventFilter::new(EventType::Contract)
                             .contract(contract_id)
-                            .topic(vec![Topic::Val(sc_symbol(event_name)?)]),
+                            .topic(vec![Topic::Val(sc_symbol(event_name)?), Topic::Greedy]),
                     )
                 })
                 .collect::<Result<Vec<_>>>()?;

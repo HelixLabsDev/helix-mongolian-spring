@@ -176,6 +176,8 @@ stellar contract invoke \
   --role 1 \
   >/dev/null
 
+DEPLOY_LEDGER="$(latest_ledger_sequence)"
+
 step "Seeding Bob's collateral position"
 NOW="$(current_timestamp)"
 stellar contract invoke \
@@ -280,7 +282,6 @@ stellar contract invoke \
   >/dev/null
 
 step "Writing liquidation bot config"
-DEPLOY_LEDGER="$(latest_ledger_sequence)"
 cat >"$BOT_CONFIG_PATH" <<EOF
 rpc_url = "$RPC_URL"
 network_passphrase = "$NETWORK_PASSPHRASE"
