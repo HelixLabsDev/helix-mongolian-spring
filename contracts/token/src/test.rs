@@ -411,6 +411,57 @@ fn test_shares_for_assets() {
 }
 
 #[test]
+fn test_public_burn_preserves_exchange_rate() {
+    let fixture = TokenTestFixture::new();
+    fixture.env.mock_all_auths();
+
+    fixture.client.burn(&fixture.user1, &0);
+    assert_eq!(fixture.client.exchange_rate(), (0, 0));
+
+    fixture.client.vault_mint(&fixture.user1, &100);
+    fixture.client.update_exchange_rate(&251);
+    fixture.client.burn(&fixture.user1, &40);
+
+    assert_eq!(fixture.client.balance(&fixture.user1), 60);
+    assert_eq!(fixture.client.total_supply(), 60);
+    assert_eq!(fixture.client.exchange_rate(), (150, 60));
+    assert_eq!(fixture.client.assets_for_shares(&10), 25);
+    assert_eq!(
+        instance_value::<i128>(&fixture.env, &fixture.client.address, &DataKey::TotalAssets),
+        150
+    );
+}
+
+#[test]
+fn test_public_burn_from_preserves_exchange_rate() {
+    let fixture = TokenTestFixture::new();
+    fixture.env.mock_all_auths();
+
+    fixture.client.burn_from(&fixture.user2, &fixture.user1, &0);
+    assert_eq!(fixture.client.exchange_rate(), (0, 0));
+
+    fixture.client.vault_mint(&fixture.user1, &100);
+    fixture.client.update_exchange_rate(&251);
+
+    let expiration = fixture.env.ledger().sequence() + 100;
+    fixture
+        .client
+        .approve(&fixture.user1, &fixture.user2, &60, &expiration);
+    fixture
+        .client
+        .burn_from(&fixture.user2, &fixture.user1, &40);
+
+    assert_eq!(fixture.client.balance(&fixture.user1), 60);
+    assert_eq!(fixture.client.total_supply(), 60);
+    assert_eq!(fixture.client.exchange_rate(), (150, 60));
+    assert_eq!(fixture.client.allowance(&fixture.user1, &fixture.user2), 20);
+    assert_eq!(
+        instance_value::<i128>(&fixture.env, &fixture.client.address, &DataKey::TotalAssets),
+        150
+    );
+}
+
+#[test]
 fn test_transfer() {
     let fixture = TokenTestFixture::new();
     fixture.env.mock_all_auths();

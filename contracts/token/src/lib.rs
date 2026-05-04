@@ -270,10 +270,7 @@ impl TokenInterface for HelixToken {
 
         Self::extend_instance(&env);
         Self::spend_balance(&env, &from, amount);
-
-        let total_shares = Self::read_total_shares(&env);
-        let updated_total_shares = Self::checked_sub(&env, total_shares, amount);
-        Self::write_total_shares(&env, updated_total_shares);
+        Self::burn_external_shares(&env, amount);
 
         TokenUtils::new(&env).events().burn(from, amount);
     }
@@ -286,10 +283,7 @@ impl TokenInterface for HelixToken {
         Self::extend_instance(&env);
         Self::spend_allowance(&env, &from, &spender, amount);
         Self::spend_balance(&env, &from, amount);
-
-        let total_shares = Self::read_total_shares(&env);
-        let updated_total_shares = Self::checked_sub(&env, total_shares, amount);
-        Self::write_total_shares(&env, updated_total_shares);
+        Self::burn_external_shares(&env, amount);
 
         TokenUtils::new(&env).events().burn(from, amount);
     }
@@ -361,6 +355,10 @@ impl HelixToken {
         Self::get_instance(env, &DataKey::TotalAssets)
     }
 
+    fn write_total_assets(env: &Env, amount: i128) {
+        env.storage().instance().set(&DataKey::TotalAssets, &amount);
+    }
+
     fn mint_shares(env: &Env, to: &Address, shares: i128) {
         let balance = Self::read_balance(env, to);
         let total_shares = Self::read_total_shares(env);
@@ -387,6 +385,25 @@ impl HelixToken {
             (Symbol::new(env, "burn"), from.clone()),
             (shares, updated_total_shares),
         );
+    }
+
+    fn burn_external_shares(env: &Env, shares: i128) {
+        if shares == 0 {
+            return;
+        }
+
+        let total_shares = Self::read_total_shares(env);
+        let total_assets = Self::read_total_assets(env);
+        let assets_to_remove = Self::checked_div_ceil(
+            env,
+            Self::checked_mul(env, shares, total_assets),
+            total_shares,
+        );
+        let updated_total_shares = Self::checked_sub(env, total_shares, shares);
+        let updated_total_assets = Self::checked_sub(env, total_assets, assets_to_remove);
+
+        Self::write_total_shares(env, updated_total_shares);
+        Self::write_total_assets(env, updated_total_assets);
     }
 
     fn balance_key(address: &Address) -> DataKey {
@@ -520,6 +537,20 @@ impl HelixToken {
         match left.checked_mul(right) {
             Some(value) => value,
             None => panic_with_error!(env, TokenError::InvalidAmount),
+        }
+    }
+
+    fn checked_div_ceil(env: &Env, numerator: i128, denominator: i128) -> i128 {
+        if denominator <= 0 {
+            panic_with_error!(env, TokenError::InvalidAmount);
+        }
+
+        let quotient = numerator / denominator;
+        let remainder = numerator % denominator;
+        if remainder == 0 {
+            quotient
+        } else {
+            Self::checked_add(env, quotient, 1)
         }
     }
 }
