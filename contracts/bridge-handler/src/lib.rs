@@ -247,6 +247,11 @@ impl BridgeHandler {
         Self::read_recipient_mapping(&env, &evm_address)
     }
 
+    pub fn source_config(env: Env) -> (String, String) {
+        Self::require_initialized(&env);
+        (Self::source_chain(&env), Self::source_address(&env))
+    }
+
     pub fn initiate_withdrawal(
         env: Env,
         user: Address,
@@ -345,6 +350,26 @@ impl BridgeHandler {
         Self::admin(&env).require_auth();
         Self::extend_instance(&env);
         env.storage().instance().set(&DataKey::Paused, &false);
+    }
+
+    pub fn set_source_config(
+        env: Env,
+        source_chain: String,
+        source_address: String,
+    ) {
+        Self::require_initialized(&env);
+        Self::admin(&env).require_auth();
+        Self::extend_instance(&env);
+        env.storage()
+            .instance()
+            .set(&DataKey::SourceChain, &source_chain);
+        env.storage()
+            .instance()
+            .set(&DataKey::SourceAddress, &source_address);
+        env.events().publish(
+            (Symbol::new(&env, "source_config_set"),),
+            (source_chain, source_address),
+        );
     }
 
     pub fn set_admin(env: Env, new_admin: Address) {

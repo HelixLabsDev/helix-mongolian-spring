@@ -433,11 +433,66 @@ fn test_constructor_stores_config() {
         ),
         fixture.source_address
     );
+    assert_eq!(
+        fixture.client.source_config(),
+        (fixture.source_chain.clone(), fixture.source_address.clone())
+    );
     assert!(!instance_value::<bool>(
         &fixture.env,
         &fixture.client.address,
         &DataKey::Paused
     ));
+}
+
+#[test]
+fn test_set_source_config_updates_validation_pair() {
+    let fixture = BridgeHandlerTestFixture::new();
+    let payload = fixture.deposit_payload(&fixture.user, 150, 21);
+    let source_chain = String::from_str(&fixture.env, "ethereum-sepolia");
+    let source_address = String::from_str(
+        &fixture.env,
+        "0x5A33F35f4B02269107e60713bc2dAb970C741a0c",
+    );
+
+    fixture
+        .client
+        .set_source_config(&source_chain, &source_address);
+    assert_eq!(
+        fixture.client.source_config(),
+        (source_chain.clone(), source_address.clone())
+    );
+
+    assert_contract_error(
+        || {
+            fixture.client.execute(
+                &fixture.source_chain,
+                &String::from_str(&fixture.env, "deposit-old-config"),
+                &fixture.source_address,
+                &payload,
+            );
+        },
+        4,
+    );
+
+    fixture.client.execute(
+        &source_chain,
+        &String::from_str(&fixture.env, "deposit-new-config"),
+        &source_address,
+        &payload,
+    );
+    assert_eq!(fixture.token.balance(&fixture.user), 150);
+}
+
+#[test]
+#[should_panic]
+fn test_set_source_config_requires_admin_auth() {
+    let fixture = BridgeHandlerTestFixture::new();
+    fixture.env.set_auths(&[]);
+
+    fixture.client.set_source_config(
+        &String::from_str(&fixture.env, "ethereum-sepolia"),
+        &String::from_str(&fixture.env, "0x5A33F35f4B02269107e60713bc2dAb970C741a0c"),
+    );
 }
 
 #[test]
