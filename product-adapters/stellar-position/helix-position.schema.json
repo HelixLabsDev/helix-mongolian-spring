@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helixlabs.org/schemas/helix-position.schema.json",
+  "title": "HelixPosition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "chain",
+    "user_id",
+    "position_id",
+    "collateral_token",
+    "collateral_amount",
+    "collateral_value_usd",
+    "debt_token",
+    "debt_amount",
+    "debt_value_usd",
+    "health_factor",
+    "ltv_current",
+    "ltv_max",
+    "liquidation_threshold",
+    "borrow_rate",
+    "accrued_interest",
+    "last_updated",
+    "status"
+  ],
+  "properties": {
+    "chain": {
+      "enum": ["canton", "stellar"]
+    },
+    "user_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "position_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "collateral_token": {
+      "type": "string",
+      "minLength": 1
+    },
+    "collateral_amount": {
+      "type": "number"
+    },
+    "collateral_value_usd": {
+      "type": "number"
+    },
+    "debt_token": {
+      "type": "string",
+      "minLength": 1
+    },
+    "debt_amount": {
+      "type": "number"
+    },
+    "debt_value_usd": {
+      "type": "number"
+    },
+    "health_factor": {
+      "type": "number"
+    },
+    "ltv_current": {
+      "type": "number",
+      "minimum": 0
+    },
+    "ltv_max": {
+      "type": "number",
+      "minimum": 0
+    },
+    "liquidation_threshold": {
+      "type": "number",
+      "minimum": 0
+    },
+    "borrow_rate": {
+      "type": "number",
+      "minimum": 0
+    },
+    "accrued_interest": {
+      "type": "number"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "enum": ["active", "liquidatable", "liquidated", "closed"]
+    }
+  }
+}
