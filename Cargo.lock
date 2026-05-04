@@ -797,7 +797,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
+name = "helix-blend-oracle-adaptor"
+version = "0.1.0"
+dependencies = [
+ "sep-40-oracle",
+ "soroban-sdk",
+]
+
+[[package]]
 name = "helix-mock-bridge"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
+name = "helix-mock-oracle"
 version = "0.1.0"
 dependencies = [
  "soroban-sdk",
@@ -1330,6 +1345,15 @@ name = "semver"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d767eb0aabc880b29956c35734170f26ed551a859dbd361d140cdbeca61ab1e2"
+
+[[package]]
+name = "sep-40-oracle"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1effb50cdf810aa3fa35911da09bd1387bd823e953d515a16c3e4c0fcd42da75"
+dependencies = [
+ "soroban-sdk",
+]
 
 [[package]]
 name = "serde"

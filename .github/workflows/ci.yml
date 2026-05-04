@@ -9,7 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
-  CONTRACT_PACKAGES: bridge-poc helix-mock-bridge helix-oracle-adaptor helix-token helix-vault bridge-handler
+  CONTRACT_PACKAGES: bridge-poc bridge-handler helix-mock-bridge helix-mock-oracle helix-oracle-adaptor helix-blend-oracle-adaptor helix-token helix-vault
 
 jobs:
   check:
