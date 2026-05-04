@@ -91,17 +91,34 @@ const events = [
   },
 ];
 
-export function buildDashboardModel(snapshot = dashboardSnapshot) {
-  const position = mapStellarVaultSnapshotToHelixPosition(snapshot);
+export function buildDashboardModel(snapshot = dashboardSnapshot, liveInputs = {}) {
+  const injected = liveInputs.injectedPosition;
+  const activeSnapshot = injected?.snapshot || snapshot;
+  const position = injected?.position || mapStellarVaultSnapshotToHelixPosition(activeSnapshot);
   const utilization = position.ltv_max === 0 ? 0 : position.ltv_current / position.ltv_max;
   const bufferToLiquidation = position.liquidation_threshold - position.ltv_current;
+  const wallet = liveInputs.wallet || {
+    address: activeSnapshot.userAddress,
+    status: "static",
+    label: "Connect Freighter",
+  };
+  const rpc = liveInputs.rpc || {
+    rpcUrl: null,
+    status: "static",
+    latestLedger: null,
+    live: false,
+  };
+  const positionMode = injected?.status === "live" ? "live" : "static evidence";
 
   return {
     network: "stellar-2026-q1-2",
     wallet: {
-      address: snapshot.userAddress,
-      status: "ready",
+      address: wallet.address || activeSnapshot.userAddress,
+      status: wallet.status,
+      label: wallet.label,
     },
+    rpc,
+    positionMode,
     position,
     bridgeProof,
     contracts,
@@ -121,15 +138,15 @@ export function buildDashboardModel(snapshot = dashboardSnapshot) {
     readiness: [
       { label: "Bridge E2E", state: "complete" },
       { label: "Liquidation Engine", state: "complete" },
-      { label: "Position Adapter", state: "complete" },
-      { label: "Freighter Dashboard", state: "needs live verification" },
+      { label: "Position Adapter", state: injected?.status === "live" ? "live" : "complete" },
+      { label: "Freighter Dashboard", state: wallet.status === "connected" ? "connected" : "needs live verification" },
       { label: "T2 Evidence Packet", state: "needs packaging" },
     ],
     ticker: [
       { label: "Bridge Amount", value: bridgeProof.displayAmount },
       { label: "Health Factor", value: position.health_factor.toFixed(2) },
       { label: "LTV", value: formatPercent(position.ltv_current) },
-      { label: "Max LTV", value: formatPercent(position.ltv_max) },
+      { label: "RPC", value: rpc.status },
       { label: "Blend Smoke", value: "Green" },
       { label: "Bridge", value: "Executed" },
     ],

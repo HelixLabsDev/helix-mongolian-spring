@@ -5,18 +5,33 @@ import {
   formatNumber,
   formatPercent,
 } from "./dashboardModel.mjs";
+import {
+  readFreighterWallet,
+  readLiveDashboardInputs,
+  shortAddress as shortLiveAddress,
+} from "./liveData.mjs";
 
 const app = document.querySelector("#app");
-const model = buildDashboardModel(dashboardSnapshot);
+let liveInputs = {};
+let model = buildDashboardModel(dashboardSnapshot, liveInputs);
 
 function shortHash(value, head = 8, tail = 6) {
   if (!value || value.length <= head + tail + 3) return value;
   return `${value.slice(0, head)}...${value.slice(-tail)}`;
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function statusClass(value) {
   const normalized = String(value).toLowerCase();
-  if (["complete", "executed", "green", "live", "trusted", "upgraded", "ready", "clear", "current"].includes(normalized)) {
+  if (["complete", "connected", "executed", "green", "healthy", "live", "trusted", "upgraded", "ready", "clear", "current"].includes(normalized)) {
     return "status-good";
   }
   if (normalized.includes("needs") || normalized.includes("not deployed")) {
@@ -28,9 +43,9 @@ function statusClass(value) {
 function metric(label, value, detail = "") {
   return `
     <div class="metric">
-      <span class="metric-label">${label}</span>
-      <strong>${value}</strong>
-      ${detail ? `<span class="metric-detail">${detail}</span>` : ""}
+      <span class="metric-label">${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+      ${detail ? `<span class="metric-detail">${escapeHtml(detail)}</span>` : ""}
     </div>
   `;
 }
@@ -53,8 +68,8 @@ function renderTicker() {
         .map(
           (item) => `
             <div class="ticker-item">
-              <span>${item.label}</span>
-              <strong>${item.value}</strong>
+              <span>${escapeHtml(item.label)}</span>
+              <strong>${escapeHtml(item.value)}</strong>
             </div>
           `
         )
@@ -63,7 +78,7 @@ function renderTicker() {
   `;
 }
 
-function renderHeader(walletLabel = "Connect Freighter") {
+function renderHeader(walletLabel = model.wallet.label || "Connect Freighter") {
   return `
     <header class="topbar">
       <div class="brand-row">
@@ -74,8 +89,8 @@ function renderHeader(walletLabel = "Connect Freighter") {
         </div>
       </div>
       <div class="topbar-actions">
-        <span class="network">${model.network}</span>
-        <button id="connect-wallet" type="button">${walletLabel}</button>
+        <span class="network">${escapeHtml(model.network)}</span>
+        <button id="connect-wallet" type="button">${escapeHtml(walletLabel)}</button>
       </div>
     </header>
   `;
@@ -91,6 +106,7 @@ function renderPositionPanel() {
         ${metric("Debt", `${formatNumber(position.debt_amount)} ${position.debt_token}`, formatCurrency(position.debt_value_usd))}
         ${metric("Health Factor", position.health_factor.toFixed(4), position.status)}
         ${metric("Borrow Rate", formatPercent(position.borrow_rate), "current pool config")}
+        ${metric("Data Mode", model.positionMode, model.wallet.status)}
       </div>
       <div class="bar-block">
         <div class="bar-row">
@@ -104,6 +120,22 @@ function renderPositionPanel() {
           <span>Max ${formatPercent(position.ltv_max)}</span>
           <span>Liquidation ${formatPercent(position.liquidation_threshold)}</span>
         </div>
+      </div>
+    `
+  );
+}
+
+function renderNetworkPanel() {
+  const ledger = model.rpc.latestLedger?.sequence ?? "unavailable";
+  const rpcUrl = model.rpc.rpcUrl ? model.rpc.rpcUrl.replace(/^https?:\/\//, "") : "not configured";
+  return panel(
+    "Network Status",
+    `
+      <div class="metric-grid two">
+        ${metric("RPC", model.rpc.status, rpcUrl)}
+        ${metric("Latest Ledger", ledger, model.rpc.live ? "live" : "not live")}
+        ${metric("Wallet", model.wallet.status, model.wallet.address ? shortLiveAddress(model.wallet.address) : "not connected")}
+        ${metric("Position Source", model.positionMode, model.positionMode === "live" ? "injected contract facades" : "static testnet evidence")}
       </div>
     `
   );
@@ -253,6 +285,7 @@ function render(walletLabel) {
         <div id="position">${renderPositionPanel()}</div>
         <div id="bridge">${renderBridgePanel()}</div>
         <div id="risk">${renderRiskPanel()}</div>
+        <div>${renderNetworkPanel()}</div>
         <div id="blend">${renderBlendPanel()}</div>
         <div>${renderContractsPanel()}</div>
         <div id="activity">${renderActivityPanel()}</div>
@@ -265,27 +298,22 @@ function render(walletLabel) {
 }
 
 async function connectFreighter() {
-  const api = window.freighterApi || window.freighter;
-  if (!api) {
-    render("Freighter unavailable");
-    return;
-  }
-
-  try {
-    let address;
-    if (typeof api.requestAccess === "function") {
-      const result = await api.requestAccess();
-      address = typeof result === "string" ? result : result?.address || result?.publicKey;
-    } else if (typeof api.getPublicKey === "function") {
-      address = await api.getPublicKey();
-    } else if (typeof api.getAddress === "function") {
-      address = await api.getAddress();
-    }
-
-    render(address ? shortHash(String(address), 8, 6) : "Wallet connected");
-  } catch {
-    render("Wallet blocked");
-  }
+  liveInputs = {
+    ...liveInputs,
+    wallet: await readFreighterWallet(window),
+  };
+  model = buildDashboardModel(dashboardSnapshot, liveInputs);
+  render();
 }
 
 render();
+
+readLiveDashboardInputs({ globalObject: window })
+  .then((inputs) => {
+    liveInputs = inputs;
+    model = buildDashboardModel(dashboardSnapshot, liveInputs);
+    render();
+  })
+  .catch(() => {
+    render();
+  });
