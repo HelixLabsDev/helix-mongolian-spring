@@ -27,6 +27,7 @@ liquidation-bot/target/
 
 contracts/vault/test_snapshots/
 contracts/oracle-adaptor/test_snapshots/
+contracts/blend-oracle-adaptor/test_snapshots/
 contracts/token/test_snapshots/
 contracts/bridge-handler/test_snapshots/
 contracts/mock-oracle/test_snapshots/
@@ -34,6 +35,9 @@ liquidation-bot/config.testnet.toml
 
 # Agent session artifacts (handoffs are ephemeral, instructions are tracked)
 .codex/handoff.md
+.codex/runs/
 
 # Stale artifacts
 Helix Stellar/
+axelar-examples/
+helix-mongolian-spring/
