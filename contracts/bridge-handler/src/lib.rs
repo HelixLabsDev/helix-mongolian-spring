@@ -60,6 +60,7 @@ pub enum DataKey {
     MaxMintPerEpoch,
     MaxBurnPerEpoch,
     EpochDuration,
+    WithdrawalsEnabled,
     ProcessedMessage(BytesN<32>),
     RecipientMapping(BytesN<32>),
     EpochMints(u64),
@@ -88,6 +89,7 @@ pub enum BridgeHandlerError {
     InvalidMessageType = 9,
     InvalidAmount = 10,
     AbiDecodeFailed = 11,
+    WithdrawalsDisabled = 12,
 }
 
 #[contracterror]
@@ -187,6 +189,9 @@ impl BridgeHandler {
         env.storage()
             .instance()
             .set(&DataKey::EpochDuration, &DEFAULT_EPOCH_DURATION);
+        env.storage()
+            .instance()
+            .set(&DataKey::WithdrawalsEnabled, &false);
         Self::extend_instance(&env);
     }
 
@@ -247,6 +252,11 @@ impl BridgeHandler {
         Self::read_recipient_mapping(&env, &evm_address)
     }
 
+    pub fn withdrawals_enabled(env: Env) -> bool {
+        Self::require_initialized(&env);
+        Self::withdrawals_enabled_internal(&env)
+    }
+
     pub fn source_config(env: Env) -> (String, String) {
         Self::require_initialized(&env);
         (Self::source_chain(&env), Self::source_address(&env))
@@ -262,6 +272,7 @@ impl BridgeHandler {
         Self::extend_instance(&env);
         user.require_auth();
         Self::require_not_paused(&env)?;
+        Self::require_withdrawals_enabled(&env)?;
         Self::validate_amount(shares)?;
 
         let epoch = Self::current_epoch(&env)?;
@@ -352,11 +363,18 @@ impl BridgeHandler {
         env.storage().instance().set(&DataKey::Paused, &false);
     }
 
-    pub fn set_source_config(
-        env: Env,
-        source_chain: String,
-        source_address: String,
-    ) {
+    pub fn set_withdrawals_enabled(env: Env, enabled: bool) {
+        Self::require_initialized(&env);
+        Self::admin(&env).require_auth();
+        Self::extend_instance(&env);
+        env.storage()
+            .instance()
+            .set(&DataKey::WithdrawalsEnabled, &enabled);
+        env.events()
+            .publish((Symbol::new(&env, "withdrawals_enabled_set"),), (enabled,));
+    }
+
+    pub fn set_source_config(env: Env, source_chain: String, source_address: String) {
         Self::require_initialized(&env);
         Self::admin(&env).require_auth();
         Self::extend_instance(&env);
@@ -559,6 +577,13 @@ impl BridgeHandler {
         Ok(())
     }
 
+    fn require_withdrawals_enabled(env: &Env) -> Result<(), BridgeHandlerError> {
+        if !Self::withdrawals_enabled_internal(env) {
+            return Err(BridgeHandlerError::WithdrawalsDisabled);
+        }
+        Ok(())
+    }
+
     fn require_message_not_processed(
         env: &Env,
         payload_hash: &BytesN<32>,
@@ -665,6 +690,10 @@ impl BridgeHandler {
 
     fn paused(env: &Env) -> bool {
         Self::get_instance(env, &DataKey::Paused)
+    }
+
+    fn withdrawals_enabled_internal(env: &Env) -> bool {
+        Self::get_instance(env, &DataKey::WithdrawalsEnabled)
     }
 
     fn max_mint_per_epoch(env: &Env) -> i128 {

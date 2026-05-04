@@ -442,6 +442,12 @@ fn test_constructor_stores_config() {
         &fixture.client.address,
         &DataKey::Paused
     ));
+    assert!(!instance_value::<bool>(
+        &fixture.env,
+        &fixture.client.address,
+        &DataKey::WithdrawalsEnabled
+    ));
+    assert!(!fixture.client.withdrawals_enabled());
 }
 
 #[test]
@@ -449,10 +455,8 @@ fn test_set_source_config_updates_validation_pair() {
     let fixture = BridgeHandlerTestFixture::new();
     let payload = fixture.deposit_payload(&fixture.user, 150, 21);
     let source_chain = String::from_str(&fixture.env, "ethereum-sepolia");
-    let source_address = String::from_str(
-        &fixture.env,
-        "0x5A33F35f4B02269107e60713bc2dAb970C741a0c",
-    );
+    let source_address =
+        String::from_str(&fixture.env, "0x5A33F35f4B02269107e60713bc2dAb970C741a0c");
 
     fixture
         .client
@@ -626,9 +630,30 @@ fn test_deposit_invalid_source_address() {
 }
 
 #[test]
+fn test_withdrawal_disabled_by_default() {
+    let fixture = BridgeHandlerTestFixture::new();
+    fixture.token.bridge_mint(&fixture.user, &200);
+
+    assert_contract_error(
+        || {
+            fixture
+                .client
+                .initiate_withdrawal(&fixture.user, &75, &fixture.eth_recipient());
+        },
+        12,
+    );
+
+    assert_eq!(fixture.token.balance(&fixture.user), 200);
+    assert!(fixture.gateway.gateway_payload().is_none());
+    assert!(fixture.gas_service.gas_payload().is_none());
+}
+
+#[test]
 fn test_withdrawal_burns_and_sends_gmp() {
     let fixture = BridgeHandlerTestFixture::new();
     fixture.token.bridge_mint(&fixture.user, &200);
+    fixture.client.set_withdrawals_enabled(&true);
+    assert!(fixture.client.withdrawals_enabled());
 
     let eth_recipient = fixture.eth_recipient();
     fixture
