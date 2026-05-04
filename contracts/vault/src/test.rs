@@ -5,15 +5,15 @@ extern crate std;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use soroban_sdk::{
-    contract, contractimpl, contracttype,
+    contract, contractclient, contractimpl, contracttype,
     testutils::{Address as _, Events as _, Ledger as _},
     token::{StellarAssetClient, TokenClient},
     vec, Address, Env, IntoVal, Symbol, Val, Vec,
 };
 
 use super::{
-    DataKey, HelixVault, HelixVaultClient, PoolConfig, Position, ADMIN_ROLE, LIQUIDATOR_ROLE,
-    ORACLE_DECIMALS, PAUSER_ROLE,
+    DataKey, HelixVault, HelixVaultClient, PoolConfig, Position, PositionSnapshot, ADMIN_ROLE,
+    LIQUIDATOR_ROLE, ORACLE_DECIMALS, PAUSER_ROLE,
 };
 
 const ONE: i128 = 10_000_000;
@@ -26,6 +26,13 @@ mod helix_token {
 #[derive(Clone)]
 enum OracleDataKey {
     Price(Address),
+}
+
+#[contractclient(name = "VaultPauseClient")]
+#[allow(dead_code)]
+trait VaultPauseInterface {
+    fn pause_by(env: Env, caller: Address);
+    fn unpause_by(env: Env, caller: Address);
 }
 
 #[contract]
@@ -50,6 +57,14 @@ impl MockOracle {
 
     pub fn decimals(_env: Env, _asset: Address) -> u32 {
         ORACLE_DECIMALS
+    }
+
+    pub fn pause_vault(env: Env, vault: Address) {
+        VaultPauseClient::new(&env, &vault).pause_by(&env.current_contract_address());
+    }
+
+    pub fn unpause_vault(env: Env, vault: Address) {
+        VaultPauseClient::new(&env, &vault).unpause_by(&env.current_contract_address());
     }
 }
 
@@ -255,6 +270,7 @@ fn test_initialize() {
         instance_value::<PoolConfig>(&fixture.env, &fixture.vault.address, &DataKey::PoolConfig),
         default_config()
     );
+    assert_eq!(fixture.vault.get_pool_config(), default_config());
     assert_eq!(
         instance_value::<Vec<Address>>(
             &fixture.env,
@@ -290,6 +306,18 @@ fn test_initialize() {
         &fixture.vault.address,
         &fixture.admin,
         ADMIN_ROLE
+    ));
+    assert!(role_value(
+        &fixture.env,
+        &fixture.vault.address,
+        &fixture.admin,
+        PAUSER_ROLE
+    ));
+    assert!(role_value(
+        &fixture.env,
+        &fixture.vault.address,
+        &fixture.oracle.address,
+        PAUSER_ROLE
     ));
 }
 
@@ -592,7 +620,6 @@ fn test_liquidation_healthy_position() {
 fn test_pause_blocks_operations() {
     let fixture = VaultTestFixture::new();
     fixture.enable_collateral();
-    fixture.grant_role(&fixture.admin, PAUSER_ROLE);
     fixture.grant_role(&fixture.liquidator, LIQUIDATOR_ROLE);
     fixture.mint_collateral(&fixture.user, 150 * ONE);
     fixture.approve_collateral(&fixture.user, 150 * ONE);
@@ -640,6 +667,25 @@ fn test_pause_blocks_operations() {
 }
 
 #[test]
+fn test_oracle_pauser_can_pause_and_unpause() {
+    let fixture = VaultTestFixture::new();
+
+    fixture.oracle.pause_vault(&fixture.vault.address);
+    assert!(instance_value::<bool>(
+        &fixture.env,
+        &fixture.vault.address,
+        &DataKey::Paused
+    ));
+
+    fixture.oracle.unpause_vault(&fixture.vault.address);
+    assert!(!instance_value::<bool>(
+        &fixture.env,
+        &fixture.vault.address,
+        &DataKey::Paused
+    ));
+}
+
+#[test]
 fn test_interest_accrual() {
     let fixture = VaultTestFixture::new();
     fixture.enable_collateral();
@@ -661,6 +707,44 @@ fn test_interest_accrual() {
 
     let position = fixture.vault.get_position(&fixture.user);
     assert_eq!(position.borrowed_amount, 102 * ONE);
+}
+
+#[test]
+fn test_position_snapshot_previews_accrual_without_writing() {
+    let fixture = VaultTestFixture::new();
+    fixture.enable_collateral();
+    fixture.mint_collateral(&fixture.user, 100 * ONE);
+    fixture.set_exchange_rate(100 * ONE);
+    fixture.set_oracle_price(2 * ONE);
+    fixture.approve_collateral(&fixture.user, 100 * ONE);
+    fixture.deposit(&fixture.user, 100 * ONE);
+    fixture.mint_borrow_token(&fixture.vault.address, 300 * ONE);
+    fixture.borrow(&fixture.user, 100 * ONE);
+
+    let stored_before = fixture.vault.get_position(&fixture.user);
+    fixture
+        .env
+        .ledger()
+        .set_timestamp(fixture.env.ledger().timestamp() + 31_536_000);
+
+    let snapshot = fixture.vault.get_position_snapshot(&fixture.user);
+    assert_eq!(
+        snapshot,
+        PositionSnapshot {
+            stored_position: stored_before.clone(),
+            accrued_position: Position {
+                deposited_shares: 100 * ONE,
+                borrowed_amount: 103 * ONE,
+                last_update: fixture.env.ledger().timestamp(),
+            },
+            accrued_interest: 3 * ONE,
+            health_factor: fixture.vault.get_health_factor(&fixture.user),
+            pool_config: default_config(),
+            collateral_token: fixture.token.address.clone(),
+            borrow_token: fixture.borrow_token.address.clone(),
+        }
+    );
+    assert_eq!(fixture.vault.get_position(&fixture.user), stored_before);
 }
 
 #[test]

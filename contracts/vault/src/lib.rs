@@ -50,6 +50,18 @@ pub struct PoolConfig {
     pub min_position: i128,
 }
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PositionSnapshot {
+    pub stored_position: Position,
+    pub accrued_position: Position,
+    pub accrued_interest: i128,
+    pub health_factor: i128,
+    pub pool_config: PoolConfig,
+    pub collateral_token: Address,
+    pub borrow_token: Address,
+}
+
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
@@ -120,6 +132,8 @@ impl HelixVault {
             .instance()
             .set(&DataKey::TotalBorrows, &0_i128);
         Self::write_role(&env, &admin, ADMIN_ROLE, true);
+        Self::write_role(&env, &admin, PAUSER_ROLE, true);
+        Self::write_role(&env, &oracle, PAUSER_ROLE, true);
         Self::extend_instance(&env);
     }
 
@@ -427,9 +441,39 @@ impl HelixVault {
         Self::read_position_required(&env, &user)
     }
 
+    pub fn get_pool_config(env: Env) -> PoolConfig {
+        Self::require_initialized(&env);
+        Self::pool_config(&env)
+    }
+
+    pub fn get_position_snapshot(env: Env, user: Address) -> PositionSnapshot {
+        Self::require_initialized(&env);
+        let collateral_token = Self::primary_supported_asset(&env);
+        let borrow_token = Self::borrow_token(&env);
+        let stored_position = Self::read_position_required(&env, &user);
+        let accrued_position = Self::preview_accrued_position(&env, &stored_position);
+        let accrued_interest = Self::checked_sub(
+            &env,
+            accrued_position.borrowed_amount,
+            stored_position.borrowed_amount,
+        );
+        let health_factor =
+            Self::health_factor_for_position(&env, &collateral_token, &accrued_position);
+
+        PositionSnapshot {
+            stored_position,
+            accrued_position,
+            accrued_interest,
+            health_factor,
+            pool_config: Self::pool_config(&env),
+            collateral_token,
+            borrow_token,
+        }
+    }
+
     pub fn pause(env: Env) {
         Self::require_initialized(&env);
-        let caller = Self::require_pauser_auth(&env);
+        let caller = Self::require_pauser_auth(&env, &Self::admin(&env));
         Self::set_paused(&env, true);
         Self::extend_instance(&env);
         env.events()
@@ -438,7 +482,25 @@ impl HelixVault {
 
     pub fn unpause(env: Env) {
         Self::require_initialized(&env);
-        let caller = Self::require_pauser_auth(&env);
+        let caller = Self::require_pauser_auth(&env, &Self::admin(&env));
+        Self::set_paused(&env, false);
+        Self::extend_instance(&env);
+        env.events()
+            .publish((Symbol::new(&env, "unpause"), caller), ());
+    }
+
+    pub fn pause_by(env: Env, caller: Address) {
+        Self::require_initialized(&env);
+        let caller = Self::require_pauser_auth(&env, &caller);
+        Self::set_paused(&env, true);
+        Self::extend_instance(&env);
+        env.events()
+            .publish((Symbol::new(&env, "pause"), caller), ());
+    }
+
+    pub fn unpause_by(env: Env, caller: Address) {
+        Self::require_initialized(&env);
+        let caller = Self::require_pauser_auth(&env, &caller);
         Self::set_paused(&env, false);
         Self::extend_instance(&env);
         env.events()
@@ -665,13 +727,10 @@ impl HelixVault {
         admin
     }
 
-    fn require_pauser_auth(env: &Env) -> Address {
-        let admin = Self::admin(env);
-        admin.require_auth();
-        if !Self::has_role(env, &admin, PAUSER_ROLE) {
-            panic_with_error!(env, VaultError::Unauthorized);
-        }
-        admin
+    fn require_pauser_auth(env: &Env, caller: &Address) -> Address {
+        caller.require_auth();
+        Self::require_role(env, caller, PAUSER_ROLE);
+        caller.clone()
     }
 
     fn require_not_paused(env: &Env) {

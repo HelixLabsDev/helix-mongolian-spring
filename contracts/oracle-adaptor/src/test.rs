@@ -143,6 +143,22 @@ impl MockVault {
             .set(&MockVaultDataKey::Paused, &true);
     }
 
+    pub fn pause_by(env: Env, caller: Address) {
+        env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_BUMP);
+        let admin = env
+            .storage()
+            .instance()
+            .get::<_, Address>(&MockVaultDataKey::Admin)
+            .expect("vault admin must exist");
+        if caller != admin {
+            panic_with_error!(&env, MockOracleError::FeedUnavailable);
+        }
+        caller.require_auth();
+        env.storage()
+            .instance()
+            .set(&MockVaultDataKey::Paused, &true);
+    }
+
     pub fn unpause(env: Env) {
         env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_BUMP);
         let admin = env
@@ -151,6 +167,22 @@ impl MockVault {
             .get::<_, Address>(&MockVaultDataKey::Admin)
             .expect("vault admin must exist");
         admin.require_auth();
+        env.storage()
+            .instance()
+            .set(&MockVaultDataKey::Paused, &false);
+    }
+
+    pub fn unpause_by(env: Env, caller: Address) {
+        env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_BUMP);
+        let admin = env
+            .storage()
+            .instance()
+            .get::<_, Address>(&MockVaultDataKey::Admin)
+            .expect("vault admin must exist");
+        if caller != admin {
+            panic_with_error!(&env, MockOracleError::FeedUnavailable);
+        }
+        caller.require_auth();
         env.storage()
             .instance()
             .set(&MockVaultDataKey::Paused, &false);

@@ -481,11 +481,15 @@ impl HelixOracleAdaptor {
     fn set_safe_mode_internal(env: &Env, enabled: bool) {
         let vault = Self::vault_callback(env);
         let method = if enabled {
-            Symbol::new(env, "pause")
+            Symbol::new(env, "pause_by")
         } else {
-            Symbol::new(env, "unpause")
+            Symbol::new(env, "unpause_by")
         };
-        env.invoke_contract::<()>(&vault, &method, vec![env]);
+        env.invoke_contract::<()>(
+            &vault,
+            &method,
+            vec![env, env.current_contract_address().into_val(env)],
+        );
     }
 
     fn checked_add(env: &Env, left: i128, right: i128) -> i128 {
