@@ -6,6 +6,8 @@ import { mapStellarVaultSnapshotToHelixPosition } from "../../../product-adapter
 
 const DEFAULT_RPC_URL = "https://soroban-testnet.stellar.org";
 const RPC_STORAGE_KEY = "helix-stellar-rpc-url";
+export const FREIGHTER_API_SCRIPT_URL =
+  "https://cdn.jsdelivr.net/npm/@stellar/freighter-api@6.0.1/build/index.min.js";
 
 export function resolveRpcUrl({ location, storage } = {}) {
   const params = new URLSearchParams(location?.search || "");
@@ -25,8 +27,36 @@ export function getFreighterApi(globalObject = globalThis) {
   return globalObject.freighterApi || globalObject.freighter || null;
 }
 
+export async function loadFreighterApi(
+  globalObject = globalThis,
+  { scriptUrl = FREIGHTER_API_SCRIPT_URL } = {}
+) {
+  const existing = getFreighterApi(globalObject);
+  if (existing) {
+    return existing;
+  }
+
+  const document = globalObject.document;
+  if (!document?.createElement || !document.head?.appendChild) {
+    return null;
+  }
+
+  if (!globalObject.__helixFreighterApiLoad) {
+    globalObject.__helixFreighterApiLoad = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = scriptUrl;
+      script.async = true;
+      script.onload = () => resolve(getFreighterApi(globalObject));
+      script.onerror = () => reject(new Error("Freighter API failed to load"));
+      document.head.appendChild(script);
+    }).catch(() => null);
+  }
+
+  return globalObject.__helixFreighterApiLoad;
+}
+
 export async function readFreighterWallet(globalObject = globalThis, { requestAccess = true } = {}) {
-  const api = getFreighterApi(globalObject);
+  const api = getFreighterApi(globalObject) || (await loadFreighterApi(globalObject));
   if (!api) {
     return {
       address: null,
@@ -152,7 +182,7 @@ export async function readInjectedPosition({
     return {
       snapshot: null,
       position: null,
-      status: "unavailable",
+      status: classifyPositionReadError(error),
       error: error instanceof Error ? error.message : String(error),
     };
   }
@@ -216,6 +246,14 @@ function normalizeWalletAddress(value, fieldName) {
     }
   }
   throw new TypeError(`${fieldName} must return an address string`);
+}
+
+function classifyPositionReadError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/no\s+position|position\s+not\s+found|not\s+found.*position|missing\s+position/i.test(message)) {
+    return "not_found";
+  }
+  return "unavailable";
 }
 
 function normalizeHealth(value) {

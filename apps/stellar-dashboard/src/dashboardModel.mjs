@@ -8,30 +8,30 @@ export const dashboardSnapshot = {
   position: {
     deposited_shares: "400000000",
     borrowed_amount: "120000000",
-    last_update: "1714837786",
+    last_update: "1777916303",
   },
   poolConfig: {
     max_ltv: "7500",
     liq_threshold: "8000",
-    interest_rate: "300",
+    interest_rate: "500",
   },
   collateral: {
-    tokenAddress: "CC366YM6MJOISQSCUXBU3BCRNKVCDI7VOZT3SF7AJKL7ILTMXY3AGBJ2",
+    tokenAddress: "CBZVPTWMSPYJQ2UMUHWQVSVIZLAN72GGOZ33E77TIPVO5NO6QHLNZBGJ",
     symbol: "hstETH",
     decimals: "7",
     assets: "400000000",
   },
   debt: {
-    tokenAddress: "CUSDC00000000000000000000000000000000000000000000000000000",
-    symbol: "USDC",
+    tokenAddress: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+    symbol: "XLM",
     decimals: "7",
   },
   prices: {
     collateralUsd: 2500,
     debtUsd: 1,
   },
-  healthFactorBps: "66666",
-  accruedInterest: "20000000",
+  healthFactorBps: "66666665",
+  accruedInterest: "2",
   status: "active",
 };
 
@@ -48,8 +48,18 @@ const bridgeProof = {
 const contracts = [
   {
     label: "hstETH Token",
+    value: "CBZVPTWMSPYJQ2UMUHWQVSVIZLAN72GGOZ33E77TIPVO5NO6QHLNZBGJ",
+    status: "live",
+  },
+  {
+    label: "Bridge hstETH Token",
     value: "CC366YM6MJOISQSCUXBU3BCRNKVCDI7VOZT3SF7AJKL7ILTMXY3AGBJ2",
-    status: "upgraded",
+    status: "executed",
+  },
+  {
+    label: "Price Oracle",
+    value: "CBBEWFLE2X27FGNENDG5IXJS5LDUHDIIDS6W6XPJN4F5VUNSCJVLSRMD",
+    status: "live",
   },
   {
     label: "Bridge Handler",
@@ -69,6 +79,16 @@ const contracts = [
 ];
 
 const events = [
+  {
+    time: "17:38:23Z",
+    label: "Vault position seeded",
+    detail: "helix-deployer deposited 40 hstETH and borrowed 12 XLM",
+  },
+  {
+    time: "17:32:00Z",
+    label: "Vault snapshot interface live",
+    detail: "Collateral Vault upgraded to expose get_position_snapshot",
+  },
   {
     time: "14:49:46Z",
     label: "GMP replay executed",
@@ -108,17 +128,19 @@ export function buildDashboardModel(snapshot = dashboardSnapshot, liveInputs = {
     latestLedger: null,
     live: false,
   };
-  const positionMode = injected?.status === "live" ? "live" : "static evidence";
+  const positionSource = resolvePositionSource({ injected, wallet });
+  const positionMode = positionSource.mode;
 
   return {
     network: "stellar-2026-q1-2",
     wallet: {
-      address: wallet.address || activeSnapshot.userAddress,
+      address: wallet.address || (wallet.status === "static" ? activeSnapshot.userAddress : null),
       status: wallet.status,
       label: wallet.label,
     },
     rpc,
     positionMode,
+    positionSource,
     position,
     bridgeProof,
     contracts,
@@ -138,9 +160,9 @@ export function buildDashboardModel(snapshot = dashboardSnapshot, liveInputs = {
     readiness: [
       { label: "Bridge E2E", state: "complete" },
       { label: "Liquidation Engine", state: "complete" },
-      { label: "Position Adapter", state: injected?.status === "live" ? "live" : "complete" },
+      { label: "Position Adapter", state: positionSource.readinessState },
       { label: "Freighter Dashboard", state: wallet.status === "connected" ? "connected" : "needs live verification" },
-      { label: "T2 Evidence Packet", state: "needs packaging" },
+      { label: "T3 Evidence Packet", state: "complete" },
     ],
     ticker: [
       { label: "Bridge Amount", value: bridgeProof.displayAmount },
@@ -150,6 +172,38 @@ export function buildDashboardModel(snapshot = dashboardSnapshot, liveInputs = {
       { label: "Blend Smoke", value: "Green" },
       { label: "Bridge", value: "Executed" },
     ],
+  };
+}
+
+function resolvePositionSource({ injected, wallet }) {
+  if (injected?.status === "live") {
+    return {
+      mode: "live",
+      detail: "wallet contract facades",
+      readinessState: "live",
+    };
+  }
+
+  if (wallet.status === "connected" && injected?.status === "not_found") {
+    return {
+      mode: "no wallet position",
+      detail: "showing seeded testnet evidence",
+      readinessState: "wallet empty",
+    };
+  }
+
+  if (wallet.status === "connected") {
+    return {
+      mode: "wallet fallback",
+      detail: "live wallet read unavailable",
+      readinessState: "fallback",
+    };
+  }
+
+  return {
+    mode: "static evidence",
+    detail: "seeded testnet evidence",
+    readinessState: "complete",
   };
 }
 

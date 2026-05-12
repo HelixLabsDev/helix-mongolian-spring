@@ -1,4 +1,4 @@
-.PHONY: build build-wasm test clean fmt clippy check smoke-real-blend-oracle preflight-t3 probe-blend-testnet-oracle optimize sizes
+.PHONY: build build-wasm test clean fmt clippy check smoke-real-blend-oracle preflight-t3 probe-blend-testnet-oracle optimize sizes stellar-dashboard-test stellar-dashboard-regression
 
 CONTRACT_PACKAGES = bridge-poc bridge-handler helix-mock-bridge helix-mock-oracle helix-oracle-adaptor helix-blend-oracle-adaptor helix-token helix-vault
 WASM_DIR = target/wasm32v1-none/release
@@ -25,6 +25,13 @@ check: fmt clippy test
 
 smoke-real-blend-oracle:
 	scripts/smoke-real-blend-oracle.sh
+
+stellar-dashboard-test:
+	node --test apps/stellar-dashboard/dashboardModel.test.mjs apps/stellar-dashboard/liveData.test.mjs product-adapters/stellar-position/adapter.test.mjs product-adapters/stellar-position/reader.test.mjs
+	node scripts/regression-stellar-dashboard.mjs
+
+stellar-dashboard-regression:
+	node scripts/regression-stellar-dashboard.mjs
 
 preflight-t3: build-wasm check smoke-real-blend-oracle
 

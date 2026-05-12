@@ -35,6 +35,7 @@ liquidation-bot/config.testnet.toml
 
 # Agent session artifacts (handoffs are ephemeral, instructions are tracked)
 .codex/handoff.md
+.codex/roadmap.md
 .codex/runs/
 
 # Stale artifacts

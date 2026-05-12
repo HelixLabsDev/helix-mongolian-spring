@@ -7,13 +7,21 @@ import {
 } from "./dashboardModel.mjs";
 import {
   readFreighterWallet,
+  readInjectedPosition,
   readLiveDashboardInputs,
   shortAddress as shortLiveAddress,
 } from "./liveData.mjs";
+import { installHelixStellarContracts } from "./contractFacades.mjs";
 
 const app = document.querySelector("#app");
+const NAV_TARGETS = new Set(["position", "bridge", "risk", "blend", "activity"]);
+let lastHandledHash = window.location.hash;
 let liveInputs = {};
 let model = buildDashboardModel(dashboardSnapshot, liveInputs);
+
+if ("scrollRestoration" in window.history) {
+  window.history.scrollRestoration = "manual";
+}
 
 function shortHash(value, head = 8, tail = 6) {
   if (!value || value.length <= head + tail + 3) return value;
@@ -106,7 +114,7 @@ function renderPositionPanel() {
         ${metric("Debt", `${formatNumber(position.debt_amount)} ${position.debt_token}`, formatCurrency(position.debt_value_usd))}
         ${metric("Health Factor", position.health_factor.toFixed(4), position.status)}
         ${metric("Borrow Rate", formatPercent(position.borrow_rate), "current pool config")}
-        ${metric("Data Mode", model.positionMode, model.wallet.status)}
+        ${metric("Data Mode", model.positionSource.mode, model.positionSource.detail)}
       </div>
       <div class="bar-block">
         <div class="bar-row">
@@ -135,7 +143,7 @@ function renderNetworkPanel() {
         ${metric("RPC", model.rpc.status, rpcUrl)}
         ${metric("Latest Ledger", ledger, model.rpc.live ? "live" : "not live")}
         ${metric("Wallet", model.wallet.status, model.wallet.address ? shortLiveAddress(model.wallet.address) : "not connected")}
-        ${metric("Position Source", model.positionMode, model.positionMode === "live" ? "injected contract facades" : "static testnet evidence")}
+        ${metric("Position Source", model.positionSource.mode, model.positionSource.detail)}
       </div>
     `
   );
@@ -295,12 +303,79 @@ function render(walletLabel) {
   `;
 
   document.querySelector("#connect-wallet")?.addEventListener("click", connectFreighter);
+  bindNavigationHandlers();
+  scheduleScrollToCurrentHash();
 }
 
+function bindNavigationHandlers() {
+  document.querySelectorAll(".sidebar a[href^='#']").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      const targetId = link.getAttribute("href")?.slice(1);
+      if (!NAV_TARGETS.has(targetId)) {
+        return;
+      }
+
+      event.preventDefault();
+      scrollToSection(targetId);
+    });
+  });
+}
+
+function scheduleScrollToCurrentHash() {
+  lastHandledHash = window.location.hash;
+  const targetId = window.location.hash.slice(1);
+  if (!NAV_TARGETS.has(targetId)) {
+    return;
+  }
+
+  const scroll = () => scrollToSection(targetId, { updateHash: false, behavior: "auto" });
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(scroll));
+    setTimeout(scroll, 150);
+    setTimeout(scroll, 500);
+    return;
+  }
+
+  setTimeout(scroll, 0);
+}
+
+function scrollToSection(targetId, { updateHash = true, behavior = "smooth" } = {}) {
+  const target = document.getElementById(targetId);
+  if (!target) {
+    return;
+  }
+
+  const topbarHeight = document.querySelector(".topbar")?.offsetHeight || 0;
+  const tickerHeight = document.querySelector(".ticker")?.offsetHeight || 0;
+  const topOffset = topbarHeight + tickerHeight + 10;
+  target.scrollIntoView({ behavior, block: "start" });
+  window.scrollBy({ top: -topOffset, behavior });
+
+  if (updateHash && window.location.hash !== `#${targetId}`) {
+    window.history.pushState(null, "", `#${targetId}`);
+  }
+}
+
+function syncHashScroll() {
+  if (window.location.hash !== lastHandledHash) {
+    scheduleScrollToCurrentHash();
+  }
+}
+
+window.addEventListener("hashchange", scheduleScrollToCurrentHash);
+window.addEventListener("popstate", scheduleScrollToCurrentHash);
+setInterval(syncHashScroll, 250);
+
 async function connectFreighter() {
+  const wallet = await readFreighterWallet(window);
   liveInputs = {
     ...liveInputs,
-    wallet: await readFreighterWallet(window),
+    wallet,
+    injectedPosition: await readInjectedPosition({
+      globalObject: window,
+      wallet: wallet.address ? { getPublicKey: async () => wallet.address } : null,
+      useGlobalWalletFallback: false,
+    }),
   };
   model = buildDashboardModel(dashboardSnapshot, liveInputs);
   render();
@@ -308,7 +383,9 @@ async function connectFreighter() {
 
 render();
 
-readLiveDashboardInputs({ globalObject: window })
+installHelixStellarContracts(window)
+  .catch(() => null)
+  .then(() => readLiveDashboardInputs({ globalObject: window }))
   .then((inputs) => {
     liveInputs = inputs;
     model = buildDashboardModel(dashboardSnapshot, liveInputs);
