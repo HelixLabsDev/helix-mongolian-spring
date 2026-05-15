@@ -1,7 +1,6 @@
 # Tranche 3 Evidence Packet
 
-2026-05-04T20:13:03Z
-Updated: 2026-05-12T21:12:22Z
+Updated: 2026-05-12
 
 ## Readiness Call
 
