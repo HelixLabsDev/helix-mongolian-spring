@@ -137,6 +137,7 @@ export function buildDashboardModel(snapshot = dashboardSnapshot, liveInputs = {
       address: wallet.address || (wallet.status === "static" ? activeSnapshot.userAddress : null),
       status: wallet.status,
       label: wallet.label,
+      installUrl: wallet.installUrl || null,
     },
     rpc,
     positionMode,

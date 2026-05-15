@@ -124,6 +124,27 @@ button:hover {
   background: var(--accent-strong);
 }
 
+.install-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: #b45309;
+  color: #fff;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+}
+.install-banner strong { font-size: 13px; }
+.install-banner span { opacity: 0.92; }
+.install-banner .install-link {
+  margin-left: auto;
+  color: #fff;
+  text-decoration: underline;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.install-banner .install-link:hover { opacity: 0.85; }
+
 .ticker {
   position: sticky;
   top: 56px;

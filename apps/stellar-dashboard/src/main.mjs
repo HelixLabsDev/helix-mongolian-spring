@@ -48,6 +48,10 @@ function statusClass(value) {
   return "status-neutral";
 }
 
+function displayStatus(value) {
+  return String(value).replaceAll("_", " ");
+}
+
 function metric(label, value, detail = "") {
   return `
     <div class="metric">
@@ -142,7 +146,7 @@ function renderNetworkPanel() {
       <div class="metric-grid two">
         ${metric("RPC", model.rpc.status, rpcUrl)}
         ${metric("Latest Ledger", ledger, model.rpc.live ? "live" : "not live")}
-        ${metric("Wallet", model.wallet.status, model.wallet.address ? shortLiveAddress(model.wallet.address) : "not connected")}
+        ${metric("Wallet", displayStatus(model.wallet.status), model.wallet.address ? shortLiveAddress(model.wallet.address) : "not connected")}
         ${metric("Position Source", model.positionSource.mode, model.positionSource.detail)}
       </div>
     `
@@ -275,9 +279,22 @@ function renderReadinessPanel() {
   );
 }
 
+function renderInstallBanner() {
+  if (model.wallet.status !== "not_installed") return "";
+  const url = model.wallet.installUrl || "https://www.freighter.app";
+  return `
+    <div class="install-banner" role="alert">
+      <strong>Freighter wallet not detected.</strong>
+      <span>You need the Freighter browser extension to connect. It's free and takes about 30 seconds.</span>
+      <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="install-link">Install Freighter ↗</a>
+    </div>
+  `;
+}
+
 function render(walletLabel) {
   app.innerHTML = `
     ${renderHeader(walletLabel)}
+    ${renderInstallBanner()}
     ${renderTicker()}
     <main class="layout">
       <aside class="sidebar">
@@ -368,6 +385,9 @@ setInterval(syncHashScroll, 250);
 
 async function connectFreighter() {
   const wallet = await readFreighterWallet(window);
+  if (wallet.status === "not_installed" && wallet.installUrl) {
+    window.open(wallet.installUrl, "_blank", "noopener,noreferrer");
+  }
   liveInputs = {
     ...liveInputs,
     wallet,

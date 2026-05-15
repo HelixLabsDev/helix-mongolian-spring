@@ -8,6 +8,8 @@ const DEFAULT_RPC_URL = "https://soroban-testnet.stellar.org";
 const RPC_STORAGE_KEY = "helix-stellar-rpc-url";
 export const FREIGHTER_API_SCRIPT_URL =
   "https://cdn.jsdelivr.net/npm/@stellar/freighter-api@6.0.1/build/index.min.js";
+export const FREIGHTER_INSTALL_URL = "https://www.freighter.app";
+const FREIGHTER_PROBE_TIMEOUT_MS = 1500;
 
 export function resolveRpcUrl({ location, storage } = {}) {
   const params = new URLSearchParams(location?.search || "");
@@ -55,13 +57,59 @@ export async function loadFreighterApi(
   return globalObject.__helixFreighterApiLoad;
 }
 
+async function probeFreighterExtension(api) {
+  if (!api || typeof api.isConnected !== "function") {
+    if (
+      typeof api.requestAccess === "function" ||
+      typeof api.getAddress === "function" ||
+      typeof api.getPublicKey === "function"
+    ) {
+      return { installed: true };
+    }
+    return { installed: false, reason: "isConnected unavailable" };
+  }
+  try {
+    const probe = await Promise.race([
+      api.isConnected(),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("freighter probe timeout")),
+          FREIGHTER_PROBE_TIMEOUT_MS
+        )
+      ),
+    ]);
+    if (probe && typeof probe === "object" && probe.error) {
+      const msg = probe.error.message || String(probe.error);
+      if (/not\s*installed|no\s*extension|missing|unavailable|content\s*script/i.test(msg)) {
+        return { installed: false, reason: msg };
+      }
+    }
+    return { installed: true };
+  } catch (err) {
+    return { installed: false, reason: err?.message || String(err) };
+  }
+}
+
 export async function readFreighterWallet(globalObject = globalThis, { requestAccess = true } = {}) {
   const api = getFreighterApi(globalObject) || (await loadFreighterApi(globalObject));
   if (!api) {
     return {
       address: null,
-      status: "unavailable",
-      label: "Freighter unavailable",
+      status: "not_installed",
+      label: "Install Freighter",
+      installUrl: FREIGHTER_INSTALL_URL,
+      error: "Freighter API failed to load",
+    };
+  }
+
+  const probe = await probeFreighterExtension(api);
+  if (!probe.installed) {
+    return {
+      address: null,
+      status: "not_installed",
+      label: "Install Freighter",
+      installUrl: FREIGHTER_INSTALL_URL,
+      error: probe.reason,
     };
   }
 

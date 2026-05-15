@@ -18,9 +18,9 @@ const cases = [
     shim: browserShim({ wallet: "unavailable" }),
     async run(page, url) {
       await navigate(page, `${url}?case=unavailable#position`);
-      await waitFor(page, () => document.querySelector("#connect-wallet")?.textContent === "Freighter unavailable", "Freighter unavailable CTA");
+      await waitFor(page, () => document.querySelector("#connect-wallet")?.textContent === "Install Freighter", "Install Freighter CTA");
       const state = await pageState(page);
-      assertEqual(state.walletStatus, "unavailable", "wallet status");
+      assertEqual(state.walletStatus, "not installed", "wallet status");
       assertEqual(state.positionSource, "static evidence", "position source");
       assertEqual(state.positionDetail, "seeded testnet evidence", "position detail");
       assertEqual(state.rpcStatus, "healthy", "RPC status");
